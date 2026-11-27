@@ -9,8 +9,8 @@
 import assert from "node:assert/strict";
 import "dotenv/config";
 import test from "node:test";
-import { PANDASCORE_ENDPOINTS } from "../src/integrations/pandascore/endpoints.js";
-import { mapCsgoMatch } from "../src/services/csgoScoreMapper.js";
+import { PANDASCORE_ENDPOINTS } from "../src/backend/integrations/pandascore/endpoints.js";
+import { mapCsgoMatch } from "../src/backend/services/csgoScoreMapper.js";
 
 const useRealApi = process.env.PANDASCORE_USE_REAL_API === "true";
 
@@ -26,7 +26,7 @@ test(
     }
 
     const { pandascore } = await import(
-      "../src/integrations/pandascore/client.js"
+      "../src/backend/integrations/pandascore/client.js"
     );
     const response = await pandascore.get(
       PANDASCORE_ENDPOINTS.csgo.runningMatches,

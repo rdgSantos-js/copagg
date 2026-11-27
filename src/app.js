@@ -9,8 +9,8 @@
 
 
 import express from "express";
-import csgoCatalog from "./routes/csgoCatalog.js";
-import csgoLiveScores from "./routes/csgoLiveScores.js";
+import csgoCatalog from "./backend/routes/csgoCatalog.js";
+import csgoLiveScores from "./backend/routes/csgoLiveScores.js";
 
 // Cria a instância Express que será iniciada pelo servidor ou reutilizada nos testes.
 const app = express();

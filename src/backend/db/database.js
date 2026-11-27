@@ -11,7 +11,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const defaultDatabasePath = resolve(projectRoot, "data", "pandascore.sqlite");
 
 // Cria a conexão SQLite, prepara a pasta de dados e garante o esquema necessário.

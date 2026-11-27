@@ -13,13 +13,13 @@ import { once } from "node:events";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { createDatabase } from "../src/db/database.js";
-import { PANDASCORE_ENDPOINTS } from "../src/integrations/pandascore/endpoints.js";
-import { createCsgoCatalogRouter } from "../src/routes/csgoCatalog.js";
-import { syncCsgoCatalog } from "../src/services/csgoCatalogSync.js";
+import { createDatabase } from "../src/backend/db/database.js";
+import { PANDASCORE_ENDPOINTS } from "../src/backend/integrations/pandascore/endpoints.js";
+import { createCsgoCatalogRouter } from "../src/backend/routes/csgoCatalog.js";
+import { syncCsgoCatalog } from "../src/backend/services/csgoCatalogSync.js";
 import {
   syncCsgoMatches,
-} from "../src/services/csgoLiveScores/csgoLiveScoreSync.js";
+} from "../src/backend/services/csgoLiveScores/csgoLiveScoreSync.js";
 
 test("migrates existing leagues to the videogames relation", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "copagg-db-migration-"));

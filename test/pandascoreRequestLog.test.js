@@ -9,8 +9,8 @@
 import assert from "node:assert/strict";
 import axios, { AxiosError } from "axios";
 import test from "node:test";
-import { createDatabase } from "../src/db/database.js";
-import { attachPandaScoreRequestLogging } from "../src/integrations/pandascore/requestLog.js";
+import { createDatabase } from "../src/backend/db/database.js";
+import { attachPandaScoreRequestLogging } from "../src/backend/integrations/pandascore/requestLog.js";
 
 // Confirma que cada tentativa registra status, página e duração sem guardar segredos.
 test("records successful and failed PandaScore requests individually", async (t) => {
