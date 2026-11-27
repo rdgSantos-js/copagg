@@ -13,6 +13,7 @@ import app from "./app.js";
 import { getDatabase } from "./db/database.js";
 import { hydrateCsgoScoreCache } from "./services/csgoScoreCache.js";
 import { purgeOldPandaScoreErrorLogs } from "./integrations/pandascore/errorLog.js";
+import { purgeOldPandaScoreRequestLogs } from "./integrations/pandascore/requestLog.js";
 import { startCsgoScoreScheduler } from "./services/csgoLiveScores/csgoScoreScheduler.js";
 
 // Lê e valida a porta HTTP configurada para o servidor.
@@ -25,6 +26,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65_535) {
 // Abre o banco, remove logs expirados e carrega o cache persistido.
 const db = getDatabase();
 purgeOldPandaScoreErrorLogs(db);
+purgeOldPandaScoreRequestLogs(db);
 hydrateCsgoScoreCache(db);
 
 // Inicia a API HTTP e o sincronizador agendado de placares.

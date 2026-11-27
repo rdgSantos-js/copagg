@@ -8,6 +8,11 @@
 // Reúne os endpoints de Counter-Strike para evitar caminhos duplicados no código.
 export const PANDASCORE_ENDPOINTS = {
   csgo: {
+    leagues: "/csgo/leagues",
+    series: "/csgo/series",
+    upcomingTournaments: "/csgo/tournaments/upcoming",
+    upcomingMatches: "/csgo/matches/upcoming",
     runningMatches: "/csgo/matches/running",
+    pastMatches: "/csgo/matches/past",
   },
 };

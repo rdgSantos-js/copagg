@@ -28,6 +28,20 @@ const sampleMatch = {
   name: "Team A vs Team B",
   status: "running",
   begin_at: "2026-11-26T16:00:00Z",
+  league: { id: 10, name: "Premier League", slug: "premier-league" },
+  serie: {
+    id: 20,
+    league_id: 10,
+    name: "Season 1",
+    slug: "season-1",
+  },
+  tournament: {
+    id: 30,
+    serie_id: 20,
+    name: "Group Stage",
+    slug: "group-stage",
+    tier: "A",
+  },
   opponents: [
     { opponent: { id: 1, name: "Team A" } },
     { opponent: { id: 2, name: "Team B" } },
@@ -36,18 +50,86 @@ const sampleMatch = {
     { team_id: 1, score: 13 },
     { team_id: 2, score: 0 },
   ],
+  games: [
+    {
+      id: 456,
+      position: 1,
+      status: "running",
+      results: [
+        { team_id: 1, score: 7 },
+        { team_id: 2, score: 5 },
+      ],
+    },
+  ],
 };
 
 // Confirma que o mapeamento preserva equipes e placares, inclusive o valor zero.
 test("maps team scores, including a zero score", () => {
   assert.deepEqual(mapCsgoMatch(sampleMatch), {
     matchId: 123,
+    tournamentId: 30,
     name: "Team A vs Team B",
     status: "running",
     beginAt: "2026-11-26T16:00:00Z",
+    expectedBeginAt: null,
+    endAt: null,
+    league: {
+      id: 10,
+      name: "Premier League",
+      slug: "premier-league",
+      beginAt: null,
+      endAt: null,
+    },
+    series: {
+      id: 20,
+      name: "Season 1",
+      slug: "season-1",
+      beginAt: null,
+      endAt: null,
+      leagueId: 10,
+    },
+    tournament: {
+      id: 30,
+      name: "Group Stage",
+      slug: "group-stage",
+      beginAt: null,
+      endAt: null,
+      seriesId: 20,
+      tier: "A",
+    },
     teams: [
-      { id: 1, name: "Team A", score: 13 },
-      { id: 2, name: "Team B", score: 0 },
+      {
+        id: 1,
+        name: "Team A",
+        slug: null,
+        acronym: null,
+        imageUrl: null,
+        score: 13,
+      },
+      {
+        id: 2,
+        name: "Team B",
+        slug: null,
+        acronym: null,
+        imageUrl: null,
+        score: 0,
+      },
+    ],
+    games: [
+      {
+        id: 456,
+        position: 1,
+        status: "running",
+        beginAt: null,
+        endAt: null,
+        length: null,
+        winnerId: null,
+        winnerType: null,
+        results: [
+          { teamId: 1, score: 7 },
+          { teamId: 2, score: 5 },
+        ],
+      },
     ],
   });
 });
@@ -103,6 +185,28 @@ test("persists scores, serves the cache, and preserves it on sync failure", asyn
   assert.deepEqual(calls[0].options.params, { page: 1, per_page: 100 });
   assert.equal(snapshot.updatedAt, updatedAt.toISOString());
   assert.equal(snapshot.matches[0].teams[1].score, 0);
+  assert.equal(
+    db.prepare("SELECT league_id FROM series WHERE id = ?").get(20).league_id,
+    10,
+  );
+  assert.equal(
+    db
+      .prepare("SELECT series_id FROM tournaments WHERE id = ?")
+      .get(30).series_id,
+    20,
+  );
+  assert.equal(
+    db
+      .prepare("SELECT tournament_id FROM matches WHERE id = ?")
+      .get(123).tournament_id,
+    30,
+  );
+  assert.equal(
+    db
+      .prepare("SELECT score FROM game_teams WHERE game_id = ? AND team_id = ?")
+      .get(456, 1).score,
+    7,
+  );
 
   const server = app.listen(0);
   await once(server, "listening");
@@ -119,6 +223,9 @@ test("persists scores, serves the cache, and preserves it on sync failure", asyn
     assert.equal(body.isStale, false);
     assert.equal(body.updatedAt, updatedAt.toISOString());
     assert.equal(body.matches[0].matchId, 123);
+    assert.equal(body.matches[0].league.id, 10);
+    assert.equal(body.matches[0].series.id, 20);
+    assert.equal(body.matches[0].tournament.id, 30);
     assert.equal(calls.length, 1);
   } finally {
     server.close();

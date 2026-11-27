@@ -9,6 +9,7 @@
 
 
 import express from "express";
+import csgoCatalog from "./routes/csgoCatalog.js";
 import csgoLiveScores from "./routes/csgoLiveScores.js";
 
 // Cria a instância Express que será iniciada pelo servidor ou reutilizada nos testes.
@@ -16,6 +17,7 @@ const app = express();
 
 // Registra o middleware JSON e a rota local de placares de Counter-Strike.
 app.use(express.json());
+app.use("/api/csgo", csgoCatalog);
 app.use("/api/csgo/live-scores", csgoLiveScores);
 
 export default app;

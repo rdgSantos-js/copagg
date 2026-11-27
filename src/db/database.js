@@ -1,8 +1,6 @@
 // ------------------------------------------------------------------------------------------
-// Cria e inicializa a conexão SQLite usada pela aplicação para persistir placares ao vivo
-// de Counter-Strike. Prepara automaticamente a pasta de dados, as tabelas de partidas e
-// metadados e o índice usado nas leituras. Expõe uma conexão compartilhada para produção
-// e uma fábrica que aceita banco em memória para testes isolados.
+// Cria e inicializa o banco SQLite com entidades normalizadas da PandaScore e logs.
+// Prepara a pasta de dados e índices e oferece conexões compartilhadas ou em memória.
 // ------------------------------------------------------------------------------------------
 
 
@@ -24,19 +22,115 @@ export function createDatabase(databasePath = defaultDatabasePath) {
 
   const db = new Database(databasePath);
   db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+
+  const legacyTable = db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+    )
+    .get("csgo_live_matches");
+
+  if (legacyTable) {
+    const { count } = db
+      .prepare("SELECT COUNT(*) AS count FROM csgo_live_matches")
+      .get();
+
+    if (count > 0) {
+      db.close();
+      throw new Error(
+        "Legacy csgo_live_matches table contains data; refusing to discard it.",
+      );
+    }
+
+    db.exec("DROP TABLE csgo_live_matches");
+  }
+
   db.exec(`
-    CREATE TABLE IF NOT EXISTS csgo_live_matches (
-      match_id INTEGER PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS leagues (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      slug TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS series (
+      id INTEGER PRIMARY KEY,
+      league_id INTEGER REFERENCES leagues(id),
+      name TEXT,
+      slug TEXT,
+      begin_at TEXT,
+      end_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS tournaments (
+      id INTEGER PRIMARY KEY,
+      series_id INTEGER REFERENCES series(id),
+      name TEXT,
+      slug TEXT,
+      tier TEXT,
+      begin_at TEXT,
+      end_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS teams (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT,
+      acronym TEXT,
+      image_url TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS matches (
+      id INTEGER PRIMARY KEY,
+      tournament_id INTEGER REFERENCES tournaments(id),
       name TEXT,
       status TEXT NOT NULL,
       begin_at TEXT,
-      teams_json TEXT NOT NULL,
+      expected_begin_at TEXT,
+      end_at TEXT,
       is_running INTEGER NOT NULL DEFAULT 1,
       fetched_at TEXT NOT NULL
     );
 
-    CREATE INDEX IF NOT EXISTS idx_csgo_live_matches_running
-      ON csgo_live_matches (is_running, begin_at);
+    CREATE TABLE IF NOT EXISTS match_teams (
+      match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+      team_id INTEGER NOT NULL REFERENCES teams(id),
+      score INTEGER,
+      PRIMARY KEY (match_id, team_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS games (
+      id INTEGER PRIMARY KEY,
+      match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+      position INTEGER,
+      status TEXT,
+      begin_at TEXT,
+      end_at TEXT,
+      length INTEGER,
+      winner_id INTEGER,
+      winner_type TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS game_teams (
+      game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      team_id INTEGER NOT NULL REFERENCES teams(id),
+      score INTEGER,
+      PRIMARY KEY (game_id, team_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_matches_running
+      ON matches (is_running, begin_at);
+
+    CREATE INDEX IF NOT EXISTS idx_matches_tournament
+      ON matches (tournament_id);
+
+    CREATE INDEX IF NOT EXISTS idx_series_league
+      ON series (league_id);
+
+    CREATE INDEX IF NOT EXISTS idx_tournaments_series
+      ON tournaments (series_id);
+
+    CREATE INDEX IF NOT EXISTS idx_games_match
+      ON games (match_id, position);
 
     CREATE TABLE IF NOT EXISTS sync_metadata (
       sync_key TEXT PRIMARY KEY,
@@ -59,6 +153,23 @@ export function createDatabase(databasePath = defaultDatabasePath) {
 
     CREATE INDEX IF NOT EXISTS idx_api_error_logs_occurred_at
       ON api_error_logs (occurred_at);
+
+    CREATE TABLE IF NOT EXISTS api_request_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      requested_at TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      method TEXT NOT NULL,
+      endpoint TEXT NOT NULL,
+      page INTEGER,
+      http_status INTEGER,
+      duration_ms INTEGER NOT NULL,
+      outcome TEXT NOT NULL CHECK (outcome IN ('success', 'error')),
+      error_code TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_api_request_logs_requested_at
+      ON api_request_logs (requested_at);
   `);
 
   return db;
