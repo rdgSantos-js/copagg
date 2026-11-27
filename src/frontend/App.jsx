@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import BrandMark from "./components/BrandMark.jsx";
 import Icon from "./components/Icon.jsx";
 import MatchCard from "./components/MatchCard.jsx";
+import MatchColumn from "./components/MatchColumn.jsx";
 import SectionHeading from "./components/SectionHeading.jsx";
 import ThemeToggle from "./components/ThemeToggle.jsx";
 import {
+  columnMatches,
   matchFilters,
   matches,
   navigation,
@@ -235,6 +237,15 @@ function App() {
                 })
                 .map((match) => <MatchCard key={match.competition} match={match} />)}
             </div>
+          </section>
+
+          <section className="content-section">
+            <SectionHeading
+              eyebrow="04 — COLUNA"
+              title="Jogos empilhados"
+              description="Oito partidas demonstrativas em uma única coluna."
+            />
+            <MatchColumn matches={columnMatches} />
           </section>
 
           <footer className="page-footer">

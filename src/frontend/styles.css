@@ -1,5 +1,6 @@
 :root {
   color-scheme: light;
+  --font-scale: 1.15;
   font-family: "Segoe UI", Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -9,6 +10,7 @@
 
   --color-primary: #0e34a0;
   --color-eyebrow: var(--color-primary);
+  --color-game-icon: var(--color-primary);
   --color-graphite: #343434;
   --color-neutral: #dfdfdf;
   --color-indigo: #2f3061;
@@ -40,6 +42,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-eyebrow: var(--color-lightblue);
+  --color-game-icon: var(--color-lightblue);
   --color-page: #191a20;
   --color-surface: #22232a;
   --color-surface-soft: #292a32;
@@ -123,7 +126,7 @@ input:focus-visible {
   gap: 10px;
   margin: 0 0 56px 8px;
   font-family: Manrope, sans-serif;
-  font-size: 22px;
+  font-size: calc(22px * var(--font-scale));
   font-weight: 800;
   letter-spacing: -1.3px;
 }
@@ -137,7 +140,7 @@ input:focus-visible {
   background: var(--color-primary);
   color: #fff;
   font-family: Manrope, sans-serif;
-  font-size: 19px;
+  font-size: calc(19px * var(--font-scale));
   letter-spacing: -1px;
 }
 
@@ -148,7 +151,7 @@ input:focus-visible {
 .sidebar-label {
   padding-left: 11px;
   color: var(--color-text-soft);
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   font-weight: 700;
   letter-spacing: 1.05px;
 }
@@ -168,7 +171,7 @@ input:focus-visible {
   padding: 0 12px;
   border-radius: 11px;
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   font-weight: 600;
   transition: background-color 160ms ease, color 160ms ease;
 }
@@ -221,7 +224,7 @@ input:focus-visible {
   border: 1px solid var(--color-border);
   border-radius: 12px;
   color: var(--color-text);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   font-weight: 600;
 }
 
@@ -232,15 +235,15 @@ input:focus-visible {
   place-items: center;
   border-radius: 8px;
   background: var(--color-surface-strong);
-  color: var(--color-primary);
-  font-size: 9px;
+  color: var(--color-game-icon);
+  font-size: calc(9px * var(--font-scale));
   font-weight: 800;
 }
 
 .game-caret {
   margin-left: auto;
   color: var(--color-text-soft);
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale));
 }
 
 .sidebar-note {
@@ -249,7 +252,7 @@ input:focus-visible {
   gap: 8px;
   padding-left: 3px;
   color: var(--color-text-soft);
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
 }
 
 .online-indicator,
@@ -285,12 +288,12 @@ input:focus-visible {
   align-items: center;
   gap: 11px;
   color: var(--color-text-soft);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .breadcrumb-divider {
   color: var(--color-border);
-  font-size: 17px;
+  font-size: calc(17px * var(--font-scale));
 }
 
 .breadcrumb strong {
@@ -309,7 +312,7 @@ input:focus-visible {
   border-radius: 6px;
   background: var(--color-surface-strong);
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 800;
   letter-spacing: 0.8px;
 }
@@ -325,7 +328,7 @@ input:focus-visible {
   background: var(--color-surface);
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   font-weight: 600;
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
@@ -359,7 +362,7 @@ input:focus-visible {
   box-shadow: 0 0 0 1px var(--color-border);
   color: white;
   font-family: Manrope, sans-serif;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   font-weight: 800;
 }
 
@@ -397,7 +400,7 @@ input:focus-visible {
   border-radius: var(--radius-pill);
   background: rgb(255 255 255 / 10%);
   color: rgb(255 255 255 / 88%);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 700;
   letter-spacing: 0.8px;
 }
@@ -413,7 +416,7 @@ input:focus-visible {
 .welcome-panel h1 {
   margin: 17px 0 8px;
   font-family: Manrope, sans-serif;
-  font-size: clamp(26px, 3.2vw, 37px);
+  font-size: clamp(calc(26px * var(--font-scale)), calc(3.2vw * var(--font-scale)), calc(37px * var(--font-scale)));
   font-weight: 800;
   letter-spacing: -1.7px;
   line-height: 1.16;
@@ -427,7 +430,7 @@ input:focus-visible {
   max-width: 440px;
   margin: 0;
   color: rgb(255 255 255 / 72%);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   line-height: 1.7;
 }
 
@@ -481,7 +484,7 @@ input:focus-visible {
   box-shadow: 0 20px 60px rgb(7 17 58 / 30%);
   color: #fff;
   font-family: Manrope, sans-serif;
-  font-size: 52px;
+  font-size: calc(52px * var(--font-scale));
   font-weight: 800;
   transform: translate(-50%, -50%) rotate(-9deg);
 }
@@ -490,7 +493,7 @@ input:focus-visible {
   position: absolute;
   color: #c2ceff;
   font-family: Manrope, sans-serif;
-  font-size: 20px;
+  font-size: calc(20px * var(--font-scale));
 }
 
 .art-spark-one {
@@ -501,7 +504,7 @@ input:focus-visible {
 .art-spark-two {
   right: 12%;
   bottom: 23%;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
 }
 
 .content-section {
@@ -519,7 +522,7 @@ input:focus-visible {
 .eyebrow {
   margin: 0 0 7px;
   color: var(--color-eyebrow);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 800;
   letter-spacing: 1.15px;
 }
@@ -527,7 +530,7 @@ input:focus-visible {
 .section-heading h2 {
   margin: 0;
   font-family: Manrope, sans-serif;
-  font-size: 19px;
+  font-size: calc(19px * var(--font-scale));
   font-weight: 800;
   letter-spacing: -0.5px;
 }
@@ -535,7 +538,7 @@ input:focus-visible {
 .section-description {
   margin: 5px 0 0;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
 }
 
 .palette-grid {
@@ -585,14 +588,14 @@ input:focus-visible {
   justify-content: space-between;
   gap: 4px;
   padding: 10px 3px 4px;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   font-weight: 600;
 }
 
 .palette-meta code {
   color: var(--color-text-soft);
   font-family: "Segoe UI", Arial, sans-serif;
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 500;
 }
 
@@ -625,14 +628,14 @@ input:focus-visible {
 .showcase-title h3 {
   margin: 0;
   font-family: Manrope, sans-serif;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
   font-weight: 800;
 }
 
 .showcase-title p {
   margin: 5px 0 0;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
 }
 
 .component-index {
@@ -643,7 +646,7 @@ input:focus-visible {
   border-radius: 7px;
   background: var(--color-surface-soft);
   color: var(--color-text-soft);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 700;
 }
 
@@ -664,7 +667,7 @@ input:focus-visible {
   border: 1px solid transparent;
   border-radius: 9px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   font-weight: 700;
   transition: transform 140ms ease, background-color 140ms ease;
 }
@@ -720,7 +723,7 @@ input:focus-visible {
   display: block;
   margin-bottom: 7px;
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 700;
 }
 
@@ -737,7 +740,7 @@ input:focus-visible {
 
 .search-icon {
   color: var(--color-text-soft);
-  font-size: 21px;
+  font-size: calc(21px * var(--font-scale));
   line-height: 1;
   transform: rotate(-20deg);
 }
@@ -749,7 +752,7 @@ input:focus-visible {
   outline: 0;
   background: transparent;
   color: var(--color-text);
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
 }
 
 .input-wrap input::placeholder {
@@ -762,7 +765,7 @@ input:focus-visible {
   border-radius: 5px;
   color: var(--color-text-soft);
   font-family: "Segoe UI", Arial, sans-serif;
-  font-size: 8px;
+  font-size: calc(8px * var(--font-scale));
 }
 
 .status-examples {
@@ -779,7 +782,7 @@ input:focus-visible {
   gap: 6px;
   padding: 0 8px;
   border-radius: 7px;
-  font-size: 8px;
+  font-size: calc(8px * var(--font-scale));
   font-weight: 800;
   letter-spacing: 0.45px;
   white-space: nowrap;
@@ -829,7 +832,7 @@ input:focus-visible {
   border-radius: 9px;
   background: var(--color-primary-soft);
   color: var(--color-primary);
-  font-size: 16px;
+  font-size: calc(16px * var(--font-scale));
   font-weight: 700;
 }
 
@@ -839,19 +842,19 @@ input:focus-visible {
 }
 
 .mini-stat strong {
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
 }
 
 .mini-stat small {
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
 }
 
 .mini-stat b {
   margin-left: auto;
   color: var(--color-text);
   font-family: Manrope, sans-serif;
-  font-size: 20px;
+  font-size: calc(20px * var(--font-scale));
 }
 
 .matches-section {
@@ -867,7 +870,7 @@ input:focus-visible {
   background: transparent;
   color: var(--color-primary);
   cursor: pointer;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   font-weight: 700;
 }
 
@@ -893,7 +896,7 @@ input:focus-visible {
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 600;
 }
 
@@ -914,6 +917,12 @@ input:focus-visible {
   gap: 13px;
 }
 
+.match-column {
+  display: grid;
+  width: min(100%, 250px);
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .match-card {
   padding: 16px 17px 12px;
 }
@@ -928,12 +937,12 @@ input:focus-visible {
 .match-card-top .status-badge {
   min-height: 21px;
   padding: 0 7px;
-  font-size: 7px;
+  font-size: calc(7px * var(--font-scale));
 }
 
 .match-time {
   color: var(--color-text-soft);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 600;
 }
 
@@ -941,7 +950,7 @@ input:focus-visible {
   overflow: hidden;
   margin: 12px 0 9px;
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -949,6 +958,28 @@ input:focus-visible {
 .match-teams {
   display: grid;
   gap: 7px;
+}
+
+.match-teams-with-date {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: center;
+}
+
+.match-teams-with-date .match-team {
+  grid-column: 1;
+}
+
+.match-date-time {
+  display: grid;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: center;
+  color: var(--color-text-soft);
+  font-size: calc(9px * var(--font-scale));
+  font-weight: 600;
+  text-align: center;
 }
 
 .match-team {
@@ -968,7 +999,7 @@ input:focus-visible {
   background: var(--color-surface-strong);
   color: var(--color-primary);
   font-family: Manrope, sans-serif;
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   font-weight: 800;
 }
 
@@ -981,7 +1012,7 @@ input:focus-visible {
 .team-name {
   overflow: hidden;
   color: var(--color-text);
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -991,7 +1022,7 @@ input:focus-visible {
   margin-left: auto;
   color: var(--color-text);
   font-family: Manrope, sans-serif;
-  font-size: 13px;
+  font-size: calc(13px * var(--font-scale));
 }
 
 .match-card-footer {
@@ -1002,7 +1033,7 @@ input:focus-visible {
   padding-top: 8px;
   border-top: 1px solid var(--color-border);
   color: var(--color-text-soft);
-  font-size: 8px;
+  font-size: calc(8px * var(--font-scale));
 }
 
 .icon-button {
@@ -1036,7 +1067,7 @@ input:focus-visible {
   padding: 16px 0 5px;
   border-top: 1px solid var(--color-border);
   color: var(--color-text-soft);
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
 }
 
 .footer-version {
@@ -1152,7 +1183,7 @@ input:focus-visible {
 
   .breadcrumb {
     gap: 7px;
-    font-size: 10px;
+    font-size: calc(10px * var(--font-scale));
   }
 
   .topbar-actions {
@@ -1186,11 +1217,11 @@ input:focus-visible {
   }
 
   .welcome-panel h1 {
-    font-size: 27px;
+    font-size: calc(27px * var(--font-scale));
   }
 
   .welcome-panel p {
-    font-size: 10px;
+    font-size: calc(10px * var(--font-scale));
   }
 
   .welcome-art {
@@ -1213,7 +1244,7 @@ input:focus-visible {
     width: 72px;
     height: 72px;
     border-radius: 23px;
-    font-size: 39px;
+    font-size: calc(39px * var(--font-scale));
   }
 
   .content-section {
@@ -1225,7 +1256,7 @@ input:focus-visible {
   }
 
   .section-heading h2 {
-    font-size: 17px;
+    font-size: calc(17px * var(--font-scale));
   }
 
   .section-description {
@@ -1252,11 +1283,11 @@ input:focus-visible {
     display: grid;
     gap: 3px;
     padding: 8px 2px 3px;
-    font-size: 9px;
+    font-size: calc(9px * var(--font-scale));
   }
 
   .palette-meta code {
-    font-size: 8px;
+    font-size: calc(8px * var(--font-scale));
   }
 
   .showcase-card {
@@ -1269,7 +1300,7 @@ input:focus-visible {
 
   .button {
     padding: 0 9px;
-    font-size: 9px;
+    font-size: calc(9px * var(--font-scale));
   }
 
   .status-examples {
@@ -1282,12 +1313,12 @@ input:focus-visible {
 
   .text-button {
     padding-top: 4px;
-    font-size: 9px;
+    font-size: calc(9px * var(--font-scale));
   }
 
   .page-footer {
     flex-wrap: wrap;
-    font-size: 8px;
+    font-size: calc(8px * var(--font-scale));
   }
 }
 

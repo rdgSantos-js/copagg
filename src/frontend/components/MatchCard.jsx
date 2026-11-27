@@ -8,7 +8,7 @@ function MatchCard({ match }) {
           {match.statusType === "live" && <span className="live-dot" />}
           {match.status}
         </span>
-        <span className="match-time">{match.time}</span>
+        <span className="match-time">{match.date} · {match.time}</span>
       </div>
       <p className="match-competition">{match.competition}</p>
       <div className="match-teams">
@@ -25,7 +25,7 @@ function MatchCard({ match }) {
         ))}
       </div>
       <div className="match-card-footer">
-        <span>{match.statusType === "live" ? "Counter-Strike 2" : "Melhor de 3"}</span>
+        <span>{match.videogame || "Counter-Strike 2"}</span>
         <button className="icon-button" type="button" aria-label="Ver partida">
           <Icon name="arrow" />
         </button>
