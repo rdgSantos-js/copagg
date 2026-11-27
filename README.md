@@ -7,12 +7,8 @@ a cada solicitação do usuário.
 ## Modelo do banco de dados
 
 Os dados das competições são armazenados de forma relacional, seguindo a hierarquia
-da PandaScore: `leagues -> series -> tournaments -> matches -> games`. As equipes e
-seus placares ficam nas tabelas `teams`, `match_teams` e `game_teams`. No Counter-Strike,
-cada registro em `games` representa um mapa da partida. A tabela antiga
-`csgo_live_matches` não é mais usada. A tabela `leagues` referencia `videogames`,
-que identifica o e-sport de cada liga; os registros existentes são associados a
-Counter-Strike durante a migração do banco.
+da PandaScore: `videogames -> leagues -> series -> tournaments -> matches -> games`. As equipes e
+seus placares ficam nas tabelas `teams`, `match_teams` e `game_teams`.
 
 ## Configuração
 

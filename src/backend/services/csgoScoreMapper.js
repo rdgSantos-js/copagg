@@ -62,6 +62,8 @@ export function mapCsgoLeague(league) {
 
   return {
     ...mappedLeague,
+    url: league.url ?? null,
+    imageUrl: league.image_url ?? null,
     videogame: {
       name:
         videogame?.name ??
@@ -103,6 +105,12 @@ export function mapCsgoSeries(series, fallback = {}) {
   const league = mapCsgoLeague(entity.league);
   return mapCompetitionEntity(entity, {
     leagueId: entity.league_id ?? league?.id ?? fallback.leagueId ?? null,
+    fullName: entity.full_name ?? null,
+    modifiedAt: entity.modified_at ?? null,
+    season: entity.season ?? null,
+    winnerId: entity.winner_id ?? null,
+    winnerType: entity.winner_type ?? null,
+    year: entity.year ?? null,
   });
 }
 

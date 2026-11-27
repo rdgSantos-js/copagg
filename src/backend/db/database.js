@@ -57,6 +57,8 @@ export function createDatabase(databasePath = defaultDatabasePath) {
       id INTEGER PRIMARY KEY,
       name TEXT,
       slug TEXT,
+      url TEXT,
+      image_url TEXT,
       videogame_id INTEGER REFERENCES videogames(id)
     );
 
@@ -66,7 +68,13 @@ export function createDatabase(databasePath = defaultDatabasePath) {
       name TEXT,
       slug TEXT,
       begin_at TEXT,
-      end_at TEXT
+      end_at TEXT,
+      full_name TEXT,
+      modified_at TEXT,
+      season TEXT,
+      winner_id INTEGER,
+      winner_type TEXT,
+      year INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS tournaments (
@@ -194,6 +202,27 @@ export function createDatabase(databasePath = defaultDatabasePath) {
     db.exec(
       "ALTER TABLE leagues ADD COLUMN videogame_id INTEGER REFERENCES videogames(id)",
     );
+  }
+  if (!leagueColumns.some((column) => column.name === "url")) {
+    db.exec("ALTER TABLE leagues ADD COLUMN url TEXT");
+  }
+  if (!leagueColumns.some((column) => column.name === "image_url")) {
+    db.exec("ALTER TABLE leagues ADD COLUMN image_url TEXT");
+  }
+
+  const seriesColumns = db.pragma("table_info(series)");
+  const missingSeriesColumns = {
+    full_name: "TEXT",
+    modified_at: "TEXT",
+    season: "TEXT",
+    winner_id: "INTEGER",
+    winner_type: "TEXT",
+    year: "INTEGER",
+  };
+  for (const [column, type] of Object.entries(missingSeriesColumns)) {
+    if (!seriesColumns.some((existing) => existing.name === column)) {
+      db.exec(`ALTER TABLE series ADD COLUMN ${column} ${type}`);
+    }
   }
 
   db.transaction(() => {

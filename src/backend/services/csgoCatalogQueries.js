@@ -12,7 +12,7 @@ const ENTITY_QUERIES = {
     from:
       "leagues l LEFT JOIN videogames vg ON vg.id = l.videogame_id",
     select:
-      "l.id, l.name, l.slug, vg.id AS videogameId, vg.name AS videogameName, vg.slug AS videogameSlug",
+      "l.id, l.name, l.slug, l.url, l.image_url AS imageUrl, vg.id AS videogameId, vg.name AS videogameName, vg.slug AS videogameSlug",
     orderBy: "l.name, l.id",
     search: "(l.name LIKE ? OR l.slug LIKE ?)",
     idColumn: "l.id",
@@ -22,7 +22,7 @@ const ENTITY_QUERIES = {
   series: {
     from: "series s LEFT JOIN leagues l ON l.id = s.league_id",
     select:
-      "s.id, s.league_id AS leagueId, s.name, s.slug, s.begin_at AS beginAt, s.end_at AS endAt, l.name AS leagueName",
+      "s.id, s.league_id AS leagueId, s.name, s.slug, s.begin_at AS beginAt, s.end_at AS endAt, s.full_name AS fullName, s.modified_at AS modifiedAt, s.season, s.winner_id AS winnerId, s.winner_type AS winnerType, s.year, l.name AS leagueName",
     orderBy: "s.begin_at DESC, s.id",
     search: "(s.name LIKE ? OR s.slug LIKE ?)",
     idColumn: "s.id",
@@ -80,9 +80,17 @@ const MATCH_SELECT = `
     s.id AS seriesId,
     s.name AS seriesName,
     s.slug AS seriesSlug,
+    s.full_name AS seriesFullName,
+    s.modified_at AS seriesModifiedAt,
+    s.season AS seriesSeason,
+    s.winner_id AS seriesWinnerId,
+    s.winner_type AS seriesWinnerType,
+    s.year AS seriesYear,
     l.id AS leagueId,
     l.name AS leagueName,
     l.slug AS leagueSlug,
+    l.url AS leagueUrl,
+    l.image_url AS leagueImageUrl,
     vg.id AS videogameId,
     vg.name AS videogameName,
     vg.slug AS videogameSlug,
@@ -342,6 +350,8 @@ function groupMatchRows(rows) {
               id: row.leagueId,
               name: row.leagueName,
               slug: row.leagueSlug,
+              url: row.leagueUrl,
+              imageUrl: row.leagueImageUrl,
               videogame: row.videogameId
                 ? {
                     id: row.videogameId,
@@ -356,6 +366,12 @@ function groupMatchRows(rows) {
               id: row.seriesId,
               name: row.seriesName,
               slug: row.seriesSlug,
+              fullName: row.seriesFullName,
+              modifiedAt: row.seriesModifiedAt,
+              season: row.seriesSeason,
+              winnerId: row.seriesWinnerId,
+              winnerType: row.seriesWinnerType,
+              year: row.seriesYear,
             }
           : null,
         tournament: row.tournamentId

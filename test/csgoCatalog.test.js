@@ -33,6 +33,16 @@ test("migrates existing leagues to the videogames relation", (t) => {
     );
     INSERT INTO leagues (id, name, slug)
     VALUES (10, 'League', 'league');
+    CREATE TABLE series (
+      id INTEGER PRIMARY KEY,
+      league_id INTEGER REFERENCES leagues(id),
+      name TEXT,
+      slug TEXT,
+      begin_at TEXT,
+      end_at TEXT
+    );
+    INSERT INTO series (id, league_id, name, slug)
+    VALUES (20, 10, 'Series', 'series');
   `);
   legacyDb.close();
 
@@ -52,6 +62,22 @@ test("migrates existing leagues to the videogames relation", (t) => {
     `).get(),
     { videogame_id: 1, name: "Counter-Strike", slug: "cs-go" },
   );
+  assert.deepEqual(
+    db.pragma("table_info(leagues)")
+      .filter((column) => ["url", "image_url"].includes(column.name))
+      .map((column) => column.name),
+    ["url", "image_url"],
+  );
+  assert.deepEqual(
+    db.pragma("table_info(series)")
+      .filter((column) =>
+        ["full_name", "modified_at", "season", "winner_id", "winner_type", "year"]
+          .includes(column.name),
+      )
+      .map((column) => column.name),
+    ["full_name", "modified_at", "season", "winner_id", "winner_type", "year"],
+  );
+  assert.equal(db.prepare("SELECT name FROM series WHERE id = 20").get().name, "Series");
   assert.deepEqual(db.pragma("foreign_key_check"), []);
 });
 
@@ -112,10 +138,29 @@ test("syncs league, series, and tournament catalogs", async (t) => {
       { id: 14, name: "Dota 2", slug: "dota-2" },
     ],
     [PANDASCORE_ENDPOINTS.csgo.leagues]: [
-      { id: 10, name: "League", slug: "league" },
+      {
+        id: 10,
+        name: "League",
+        slug: "league",
+        url: "https://league.example",
+        image_url: "https://cdn.example/league.png",
+      },
     ],
     [PANDASCORE_ENDPOINTS.csgo.series]: [
-      { id: 20, league_id: 10, name: "Series", slug: "series" },
+      {
+        id: 20,
+        league_id: 10,
+        name: "Series",
+        slug: "series",
+        begin_at: "2025-01-12T21:00:00Z",
+        end_at: null,
+        full_name: "Raleigh: North America Open Qualifier 1 2025",
+        modified_at: "2025-01-12T22:42:15Z",
+        season: null,
+        winner_id: 44,
+        winner_type: "Team",
+        year: 2025,
+      },
     ],
     [PANDASCORE_ENDPOINTS.csgo.upcomingTournaments]: [
       {
@@ -154,6 +199,21 @@ test("syncs league, series, and tournament catalogs", async (t) => {
     { pandascore_id: 14, name: "Dota 2", slug: "dota-2" },
   );
   assert.equal(db.prepare("SELECT league_id FROM series WHERE id = 20").get().league_id, 10);
+  assert.deepEqual(
+    db.prepare(`
+      SELECT full_name, modified_at, season, winner_id, winner_type, year
+      FROM series
+      WHERE id = 20
+    `).get(),
+    {
+      full_name: "Raleigh: North America Open Qualifier 1 2025",
+      modified_at: "2025-01-12T22:42:15Z",
+      season: null,
+      winner_id: 44,
+      winner_type: "Team",
+      year: 2025,
+    },
+  );
   assert.equal(
     db.prepare(`
       SELECT v.slug
@@ -162,6 +222,13 @@ test("syncs league, series, and tournament catalogs", async (t) => {
       WHERE l.id = 10
     `).get().slug,
     "cs-go",
+  );
+  assert.deepEqual(
+    db.prepare("SELECT url, image_url FROM leagues WHERE id = 10").get(),
+    {
+      url: "https://league.example",
+      image_url: "https://cdn.example/league.png",
+    },
   );
   assert.equal(
     db.prepare("SELECT series_id FROM tournaments WHERE id = 30").get().series_id,
@@ -238,12 +305,23 @@ test("serves catalog routes from SQLite and validates local pagination", async (
     name: "Team A vs Team B",
     status: "not_started",
     begin_at: beginAt,
-    league: { id: 10, name: "League" },
+    league: {
+      id: 10,
+      name: "League",
+      url: "https://league.example",
+      image_url: "https://cdn.example/league.png",
+    },
     serie: {
       id: 20,
       league_id: 10,
       name: "Series",
       begin_at: beginAt,
+      full_name: "Raleigh: North America Open Qualifier 1 2025",
+      modified_at: "2025-01-12T22:42:15Z",
+      season: null,
+      winner_id: 44,
+      winner_type: "Team",
+      year: 2025,
     },
     tournament: {
       id: 30,
@@ -291,9 +369,16 @@ test("serves catalog routes from SQLite and validates local pagination", async (
   const leagueBody = await leagues.json();
   assert.equal(leagueBody.data[0].id, 10);
   assert.equal(leagueBody.data[0].videogame.slug, "cs-go");
+  assert.equal(leagueBody.data[0].url, "https://league.example");
+  assert.equal(leagueBody.data[0].imageUrl, "https://cdn.example/league.png");
 
   const series = await fetch(`${baseUrl}/leagues/10/series`);
-  assert.equal((await series.json()).data[0].id, 20);
+  const seriesBody = await series.json();
+  assert.equal(seriesBody.data[0].id, 20);
+  assert.equal(
+    seriesBody.data[0].fullName,
+    "Raleigh: North America Open Qualifier 1 2025",
+  );
   const seriesByDate = new URL(`${baseUrl}/series`);
   seriesByDate.searchParams.set("range[begin_at]", `${beginAt},${beginAt}`);
   assert.equal((await (await fetch(seriesByDate)).json()).data[0].id, 20);
@@ -313,6 +398,8 @@ test("serves catalog routes from SQLite and validates local pagination", async (
   assert.equal(upcomingBody.data[0].matchId, 502);
   assert.equal(upcomingBody.data[0].league.id, 10);
   assert.equal(upcomingBody.data[0].league.videogame.slug, "cs-go");
+  assert.equal(upcomingBody.data[0].league.url, "https://league.example");
+  assert.equal(upcomingBody.data[0].league.imageUrl, "https://cdn.example/league.png");
 
   const matchesByDate = new URL(`${baseUrl}/matches`);
   matchesByDate.searchParams.set(

@@ -28,12 +28,24 @@ const sampleMatch = {
   name: "Team A vs Team B",
   status: "running",
   begin_at: "2026-11-26T16:00:00Z",
-  league: { id: 10, name: "Premier League", slug: "premier-league" },
+  league: {
+    id: 10,
+    name: "Premier League",
+    slug: "premier-league",
+    url: "https://league.example",
+    image_url: "https://cdn.example/league.png",
+  },
   serie: {
     id: 20,
     league_id: 10,
     name: "Season 1",
     slug: "season-1",
+    full_name: "Season 1 2026",
+    modified_at: "2026-11-25T10:00:00Z",
+    season: "1",
+    winner_id: null,
+    winner_type: "Team",
+    year: 2026,
   },
   tournament: {
     id: 30,
@@ -79,6 +91,8 @@ test("maps team scores, including a zero score", () => {
       slug: "premier-league",
       beginAt: null,
       endAt: null,
+      url: "https://league.example",
+      imageUrl: "https://cdn.example/league.png",
       videogame: {
         name: "Counter-Strike",
         slug: "cs-go",
@@ -91,6 +105,12 @@ test("maps team scores, including a zero score", () => {
       beginAt: null,
       endAt: null,
       leagueId: 10,
+      fullName: "Season 1 2026",
+      modifiedAt: "2026-11-25T10:00:00Z",
+      season: "1",
+      winnerId: null,
+      winnerType: "Team",
+      year: 2026,
     },
     tournament: {
       id: 30,
@@ -253,7 +273,10 @@ test("persists scores, serves the cache, and preserves it on sync failure", asyn
     assert.equal(body.matches[0].matchId, 123);
     assert.equal(body.matches[0].league.id, 10);
     assert.equal(body.matches[0].league.videogame.slug, "cs-go");
+    assert.equal(body.matches[0].league.url, "https://league.example");
+    assert.equal(body.matches[0].league.imageUrl, "https://cdn.example/league.png");
     assert.equal(body.matches[0].series.id, 20);
+    assert.equal(body.matches[0].series.fullName, "Season 1 2026");
     assert.equal(body.matches[0].tournament.id, 30);
     assert.equal(calls.length, 1);
 

@@ -54,22 +54,36 @@ function createUpserts(db) {
     `),
     getVideogame: db.prepare("SELECT id FROM videogames WHERE slug = ?"),
     league: db.prepare(`
-      INSERT INTO leagues (id, name, slug, videogame_id)
-      VALUES (@id, @name, @slug, @videogameId)
+      INSERT INTO leagues
+        (id, name, slug, url, image_url, videogame_id)
+      VALUES
+        (@id, @name, @slug, @url, @imageUrl, @videogameId)
       ON CONFLICT(id) DO UPDATE SET
         name = COALESCE(excluded.name, leagues.name),
         slug = COALESCE(excluded.slug, leagues.slug),
+        url = COALESCE(excluded.url, leagues.url),
+        image_url = COALESCE(excluded.image_url, leagues.image_url),
         videogame_id = COALESCE(excluded.videogame_id, leagues.videogame_id)
     `),
     series: db.prepare(`
-      INSERT INTO series (id, league_id, name, slug, begin_at, end_at)
-      VALUES (@id, @leagueId, @name, @slug, @beginAt, @endAt)
+      INSERT INTO series
+        (id, league_id, name, slug, begin_at, end_at, full_name, modified_at,
+         season, winner_id, winner_type, year)
+      VALUES
+        (@id, @leagueId, @name, @slug, @beginAt, @endAt, @fullName, @modifiedAt,
+         @season, @winnerId, @winnerType, @year)
       ON CONFLICT(id) DO UPDATE SET
         league_id = COALESCE(excluded.league_id, series.league_id),
         name = COALESCE(excluded.name, series.name),
         slug = COALESCE(excluded.slug, series.slug),
         begin_at = COALESCE(excluded.begin_at, series.begin_at),
-        end_at = COALESCE(excluded.end_at, series.end_at)
+        end_at = COALESCE(excluded.end_at, series.end_at),
+        full_name = COALESCE(excluded.full_name, series.full_name),
+        modified_at = COALESCE(excluded.modified_at, series.modified_at),
+        season = COALESCE(excluded.season, series.season),
+        winner_id = COALESCE(excluded.winner_id, series.winner_id),
+        winner_type = COALESCE(excluded.winner_type, series.winner_type),
+        year = COALESCE(excluded.year, series.year)
     `),
     tournament: db.prepare(`
       INSERT INTO tournaments
@@ -101,6 +115,8 @@ function persistLeague(league, upserts) {
     id: league.id,
     name: league.name,
     slug: league.slug,
+    url: league.url,
+    imageUrl: league.imageUrl,
     videogameId: videogame.id,
   });
 }
