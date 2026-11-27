@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "frontend:dev": "vite src/frontend --host 127.0.0.1",
+    "frontend:build": "vite build src/frontend",
+    "frontend:preview": "vite preview src/frontend --host 127.0.0.1",
     "test": "node --test"
   },
   "keywords": [],
@@ -15,10 +18,13 @@
     "axios": "^1.21.1",
     "better-sqlite3": "^13.2.0",
     "dotenv": "^18.0.10",
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "vite": "^8.4.0"
   },
   "type": "module"
 }
