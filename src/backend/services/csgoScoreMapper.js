@@ -47,6 +47,27 @@ function mapGame(game) {
   };
 }
 
+function mapTeam(team) {
+  if (!team || !Number.isInteger(team.id)) {
+    return null;
+  }
+
+  return {
+    id: team.id,
+    name: team.name ?? "Unknown team",
+    slug: team.slug ?? null,
+    acronym: team.acronym ?? null,
+    imageUrl: team.image_url ?? null,
+    darkModeImageUrl: team.dark_mode_image_url ?? null,
+    location: team.location ?? null,
+    modifiedAt: team.modified_at ?? null,
+  };
+}
+
+function mapNullableBoolean(value) {
+  return value == null ? null : Number(value);
+}
+
 // Normaliza uma liga recebida do endpoint de leagues.
 export function mapCsgoLeague(league) {
   const mappedLeague = mapCompetitionEntity(league);
@@ -131,7 +152,25 @@ export function mapCsgoTournament(tournament, fallback = {}) {
       series?.id ??
       fallback.seriesId ??
       null,
+    leagueId:
+      entity.league_id ??
+      entity.league?.id ??
+      fallback.leagueId ??
+      null,
     tier: entity.tier ?? null,
+    type: entity.type ?? null,
+    country: entity.country ?? null,
+    detailedStats:
+      entity.detailed_stats == null ? null : Number(entity.detailed_stats),
+    winnerId: entity.winner_id ?? null,
+    winnerType: entity.winner_type ?? null,
+    region: entity.region ?? null,
+    modifiedAt: entity.modified_at ?? null,
+    prizepool: entity.prizepool ?? null,
+    hasBracket:
+      entity.has_bracket == null ? null : Number(entity.has_bracket),
+    liveSupported:
+      entity.live_supported == null ? null : Number(entity.live_supported),
   });
 }
 
@@ -169,38 +208,102 @@ export function mapCsgoMatch(match) {
     id: rawTournamentId,
     seriesId: series?.id,
   });
+  const rawVideogame = match.videogame;
+  const videogame = rawVideogame
+    ? {
+        id: rawVideogame.id ?? null,
+        name: rawVideogame.name ?? null,
+        slug: rawVideogame.slug ?? null,
+      }
+    : league?.videogame
+      ? { id: null, ...league.videogame }
+      : null;
+  const videogameTitle = match.videogame_title
+    ? {
+        id: match.videogame_title.id ?? null,
+        name: match.videogame_title.name ?? null,
+        slug: match.videogame_title.slug ?? null,
+        videogameId: match.videogame_title.videogame_id ?? null,
+      }
+    : null;
+  const videogameVersion = match.videogame_version
+    ? {
+        current: mapNullableBoolean(match.videogame_version.current),
+        name: match.videogame_version.name ?? null,
+      }
+    : null;
   const results = Array.isArray(match.results) ? match.results : [];
   const opponents = Array.isArray(match.opponents) ? match.opponents : [];
   const teams = opponents
-    .map((entry) => entry?.opponent)
-    .filter((opponent) => opponent && Number.isInteger(opponent.id))
-    .map((opponent) => {
+    .map((entry) => {
+      const opponent = mapTeam(entry?.opponent);
+      if (!opponent) {
+        return null;
+      }
       const result = results.find(
-        (entry) => entry.team_id === opponent.id,
+        (resultEntry) => resultEntry.team_id === opponent.id,
       );
 
       return {
-        id: opponent.id,
-        name: opponent.name ?? "Unknown team",
-        slug: opponent.slug ?? null,
-        acronym: opponent.acronym ?? null,
-        imageUrl: opponent.image_url ?? null,
+        ...opponent,
+        type: entry.type ?? null,
         score: result?.score ?? null,
       };
-    });
+    })
+    .filter(Boolean);
+  const winner = mapTeam(match.winner);
+  const streamsList = Array.isArray(match.streams_list)
+    ? match.streams_list.map((stream, position) => ({
+        position,
+        embedUrl: stream?.embed_url ?? null,
+        language: stream?.language ?? null,
+        main: mapNullableBoolean(stream?.main),
+        official: mapNullableBoolean(stream?.official),
+        rawUrl: stream?.raw_url ?? null,
+      }))
+    : null;
 
   return {
     matchId: match.id,
+    leagueId: match.league_id ?? league?.id ?? null,
+    seriesId: match.serie_id ?? match.series_id ?? series?.id ?? null,
     tournamentId: tournament?.id ?? null,
+    videogame,
+    slug: match.slug ?? null,
     name: match.name ?? null,
     status: match.status ?? "running",
     beginAt: match.begin_at ?? match.expected_begin_at ?? null,
     expectedBeginAt: match.expected_begin_at ?? null,
     endAt: match.end_at ?? null,
+    detailedStats: mapNullableBoolean(match.detailed_stats),
+    draw: mapNullableBoolean(match.draw),
+    forfeit: mapNullableBoolean(match.forfeit),
+    gameAdvantage: match.game_advantage ?? null,
+    matchType: match.match_type ?? null,
+    modifiedAt: match.modified_at ?? null,
+    numberOfGames: match.number_of_games ?? null,
+    originalScheduledAt: match.original_scheduled_at ?? null,
+    rescheduled: mapNullableBoolean(match.rescheduled),
+    scheduledAt: match.scheduled_at ?? null,
+    videogameTitle,
+    videogameVersion,
+    winner,
+    winnerId: match.winner_id ?? winner?.id ?? null,
+    winnerType: match.winner_type ?? null,
+    streamsList,
     league,
     series,
     tournament,
     teams,
+    opponents: teams.map(({ score, ...opponent }) => ({
+      type: opponent.type,
+      opponent: Object.fromEntries(
+        Object.entries(opponent).filter(([key]) => key !== "type"),
+      ),
+    })),
+    results: teams
+      .filter((team) => team.score !== null)
+      .map((team) => ({ teamId: team.id, score: team.score })),
     games: Array.isArray(match.games) ? match.games.map(mapGame) : null,
   };
 }

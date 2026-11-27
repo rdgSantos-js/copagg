@@ -87,16 +87,31 @@ function createUpserts(db) {
     `),
     tournament: db.prepare(`
       INSERT INTO tournaments
-        (id, series_id, name, slug, tier, begin_at, end_at)
+        (id, series_id, league_id, name, slug, tier, begin_at, end_at,
+         type, country, detailed_stats, winner_id, winner_type, region,
+         modified_at, prizepool, has_bracket, live_supported)
       VALUES
-        (@id, @seriesId, @name, @slug, @tier, @beginAt, @endAt)
+        (@id, @seriesId, @leagueId, @name, @slug, @tier, @beginAt, @endAt,
+         @type, @country, @detailedStats, @winnerId, @winnerType, @region,
+         @modifiedAt, @prizepool, @hasBracket, @liveSupported)
       ON CONFLICT(id) DO UPDATE SET
         series_id = COALESCE(excluded.series_id, tournaments.series_id),
+        league_id = COALESCE(excluded.league_id, tournaments.league_id),
         name = COALESCE(excluded.name, tournaments.name),
         slug = COALESCE(excluded.slug, tournaments.slug),
         tier = COALESCE(excluded.tier, tournaments.tier),
         begin_at = COALESCE(excluded.begin_at, tournaments.begin_at),
-        end_at = COALESCE(excluded.end_at, tournaments.end_at)
+        end_at = COALESCE(excluded.end_at, tournaments.end_at),
+        type = COALESCE(excluded.type, tournaments.type),
+        country = COALESCE(excluded.country, tournaments.country),
+        detailed_stats = COALESCE(excluded.detailed_stats, tournaments.detailed_stats),
+        winner_id = COALESCE(excluded.winner_id, tournaments.winner_id),
+        winner_type = COALESCE(excluded.winner_type, tournaments.winner_type),
+        region = COALESCE(excluded.region, tournaments.region),
+        modified_at = COALESCE(excluded.modified_at, tournaments.modified_at),
+        prizepool = COALESCE(excluded.prizepool, tournaments.prizepool),
+        has_bracket = COALESCE(excluded.has_bracket, tournaments.has_bracket),
+        live_supported = COALESCE(excluded.live_supported, tournaments.live_supported)
     `),
   };
 }
@@ -181,7 +196,7 @@ function persistCatalogRecord(record, type, upserts) {
     upserts.series.run(series);
   }
 
-  const tournament = mapCsgoTournament(record, { seriesId });
+  const tournament = mapCsgoTournament(record, { seriesId, leagueId });
   upserts.tournament.run(tournament);
 }
 

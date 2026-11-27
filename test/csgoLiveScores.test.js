@@ -25,9 +25,29 @@ import { syncCsgoLiveScores } from "../src/backend/services/csgoLiveScores/csgoL
 // Representa uma partida ao vivo com placares conhecidos para os testes.
 const sampleMatch = {
   id: 123,
+  slug: "team-a-vs-team-b",
   name: "Team A vs Team B",
   status: "running",
   begin_at: "2026-11-26T16:00:00Z",
+  detailed_stats: true,
+  draw: false,
+  end_at: "2026-11-26T18:00:00Z",
+  forfeit: false,
+  game_advantage: null,
+  league_id: 10,
+  match_type: "best_of",
+  modified_at: "2026-11-26T18:01:00Z",
+  number_of_games: 3,
+  original_scheduled_at: "2026-11-26T15:00:00Z",
+  rescheduled: false,
+  scheduled_at: "2026-11-26T15:30:00Z",
+  serie_id: 20,
+  tournament_id: 30,
+  videogame: { id: 3, name: "Counter-Strike", slug: "cs-go" },
+  videogame_title: null,
+  videogame_version: { current: false, name: "1.0" },
+  winner_id: 1,
+  winner_type: "Team",
   league: {
     id: 10,
     name: "Premier League",
@@ -52,11 +72,36 @@ const sampleMatch = {
     serie_id: 20,
     name: "Group Stage",
     slug: "group-stage",
-    tier: "A",
+    type: "online/offline",
+    country: null,
+    begin_at: "2026-11-21T14:00:00Z",
+    detailed_stats: false,
+    end_at: "2026-12-12T22:00:00Z",
+    winner_id: null,
+    winner_type: "Team",
+    region: "WEU",
+    modified_at: "2026-11-12T14:14:29Z",
+    league_id: 10,
+    prizepool: "5000 Euro",
+    tier: "d",
+    has_bracket: true,
+    live_supported: false,
   },
   opponents: [
-    { opponent: { id: 1, name: "Team A" } },
-    { opponent: { id: 2, name: "Team B" } },
+    {
+      type: "Team",
+      opponent: {
+        id: 1,
+        name: "Team A",
+        slug: "team-a",
+        acronym: "TA",
+        image_url: "https://cdn.example/team-a.png",
+        dark_mode_image_url: "https://cdn.example/team-a-dark.png",
+        location: "US",
+        modified_at: "2026-11-20T12:00:00Z",
+      },
+    },
+    { type: "Team", opponent: { id: 2, name: "Team B" } },
   ],
   results: [
     { team_id: 1, score: 13 },
@@ -73,18 +118,75 @@ const sampleMatch = {
       ],
     },
   ],
+  streams_list: [
+    {
+      embed_url: "https://player.example/embed",
+      language: "en",
+      main: true,
+      official: true,
+      raw_url: "https://stream.example",
+    },
+  ],
+  winner: {
+    id: 1,
+    name: "Team A",
+    slug: "team-a",
+    acronym: "TA",
+    image_url: "https://cdn.example/team-a.png",
+    dark_mode_image_url: "https://cdn.example/team-a-dark.png",
+    location: "US",
+    modified_at: "2026-11-20T12:00:00Z",
+  },
 };
 
 // Confirma que o mapeamento preserva equipes e placares, inclusive o valor zero.
 test("maps team scores, including a zero score", () => {
   assert.deepEqual(mapCsgoMatch(sampleMatch), {
     matchId: 123,
+    leagueId: 10,
+    seriesId: 20,
     tournamentId: 30,
+    videogame: { id: 3, name: "Counter-Strike", slug: "cs-go" },
+    slug: "team-a-vs-team-b",
     name: "Team A vs Team B",
     status: "running",
     beginAt: "2026-11-26T16:00:00Z",
     expectedBeginAt: null,
-    endAt: null,
+    endAt: "2026-11-26T18:00:00Z",
+    detailedStats: 1,
+    draw: 0,
+    forfeit: 0,
+    gameAdvantage: null,
+    matchType: "best_of",
+    modifiedAt: "2026-11-26T18:01:00Z",
+    numberOfGames: 3,
+    originalScheduledAt: "2026-11-26T15:00:00Z",
+    rescheduled: 0,
+    scheduledAt: "2026-11-26T15:30:00Z",
+    videogameTitle: null,
+    videogameVersion: { current: 0, name: "1.0" },
+    winner: {
+      id: 1,
+      name: "Team A",
+      slug: "team-a",
+      acronym: "TA",
+      imageUrl: "https://cdn.example/team-a.png",
+      darkModeImageUrl: "https://cdn.example/team-a-dark.png",
+      location: "US",
+      modifiedAt: "2026-11-20T12:00:00Z",
+    },
+    winnerId: 1,
+    winnerType: "Team",
+    streamsList: [
+      {
+        position: 0,
+        embedUrl: "https://player.example/embed",
+        language: "en",
+        main: 1,
+        official: 1,
+        rawUrl: "https://stream.example",
+      },
+    ],
     league: {
       id: 10,
       name: "Premier League",
@@ -116,18 +218,33 @@ test("maps team scores, including a zero score", () => {
       id: 30,
       name: "Group Stage",
       slug: "group-stage",
-      beginAt: null,
-      endAt: null,
+      beginAt: "2026-11-21T14:00:00Z",
+      endAt: "2026-12-12T22:00:00Z",
       seriesId: 20,
-      tier: "A",
+      leagueId: 10,
+      tier: "d",
+      type: "online/offline",
+      country: null,
+      detailedStats: 0,
+      winnerId: null,
+      winnerType: "Team",
+      region: "WEU",
+      modifiedAt: "2026-11-12T14:14:29Z",
+      prizepool: "5000 Euro",
+      hasBracket: 1,
+      liveSupported: 0,
     },
     teams: [
       {
         id: 1,
         name: "Team A",
-        slug: null,
-        acronym: null,
-        imageUrl: null,
+        slug: "team-a",
+        acronym: "TA",
+        imageUrl: "https://cdn.example/team-a.png",
+        darkModeImageUrl: "https://cdn.example/team-a-dark.png",
+        location: "US",
+        modifiedAt: "2026-11-20T12:00:00Z",
+        type: "Team",
         score: 13,
       },
       {
@@ -136,8 +253,44 @@ test("maps team scores, including a zero score", () => {
         slug: null,
         acronym: null,
         imageUrl: null,
+        darkModeImageUrl: null,
+        location: null,
+        modifiedAt: null,
+        type: "Team",
         score: 0,
       },
+    ],
+    opponents: [
+      {
+        type: "Team",
+        opponent: {
+          id: 1,
+          name: "Team A",
+          slug: "team-a",
+          acronym: "TA",
+          imageUrl: "https://cdn.example/team-a.png",
+          darkModeImageUrl: "https://cdn.example/team-a-dark.png",
+          location: "US",
+          modifiedAt: "2026-11-20T12:00:00Z",
+        },
+      },
+      {
+        type: "Team",
+        opponent: {
+          id: 2,
+          name: "Team B",
+          slug: null,
+          acronym: null,
+          imageUrl: null,
+          darkModeImageUrl: null,
+          location: null,
+          modifiedAt: null,
+        },
+      },
+    ],
+    results: [
+      { teamId: 1, score: 13 },
+      { teamId: 2, score: 0 },
     ],
     games: [
       {
@@ -243,11 +396,104 @@ test("persists scores, serves the cache, and preserves it on sync failure", asyn
       .get(30).series_id,
     20,
   );
+  assert.deepEqual(
+    db.prepare(`
+      SELECT league_id, type, country, detailed_stats, winner_id, winner_type,
+             region, modified_at, prizepool, has_bracket, live_supported
+      FROM tournaments
+      WHERE id = 30
+    `).get(),
+    {
+      league_id: 10,
+      type: "online/offline",
+      country: null,
+      detailed_stats: 0,
+      winner_id: null,
+      winner_type: "Team",
+      region: "WEU",
+      modified_at: "2026-11-12T14:14:29Z",
+      prizepool: "5000 Euro",
+      has_bracket: 1,
+      live_supported: 0,
+    },
+  );
   assert.equal(
     db
       .prepare("SELECT tournament_id FROM matches WHERE id = ?")
       .get(123).tournament_id,
     30,
+  );
+  assert.deepEqual(
+    db.prepare(`
+      SELECT league_id, series_id, slug, detailed_stats, draw, forfeit,
+             game_advantage, match_type, modified_at, number_of_games,
+             original_scheduled_at, rescheduled, scheduled_at,
+             videogame_title_id, videogame_version_current,
+             videogame_version_name, winner_id, winner_type
+      FROM matches
+      WHERE id = 123
+    `).get(),
+    {
+      league_id: 10,
+      series_id: 20,
+      slug: "team-a-vs-team-b",
+      detailed_stats: 1,
+      draw: 0,
+      forfeit: 0,
+      game_advantage: null,
+      match_type: "best_of",
+      modified_at: "2026-11-26T18:01:00Z",
+      number_of_games: 3,
+      original_scheduled_at: "2026-11-26T15:00:00Z",
+      rescheduled: 0,
+      scheduled_at: "2026-11-26T15:30:00Z",
+      videogame_title_id: null,
+      videogame_version_current: 0,
+      videogame_version_name: "1.0",
+      winner_id: 1,
+      winner_type: "Team",
+    },
+  );
+  assert.deepEqual(
+    db.prepare(`
+      SELECT v.pandascore_id, v.name, v.slug
+      FROM matches m
+      JOIN videogames v ON v.id = m.videogame_id
+      WHERE m.id = 123
+    `).get(),
+    { pandascore_id: 3, name: "Counter-Strike", slug: "cs-go" },
+  );
+  assert.deepEqual(
+    db.prepare(`
+      SELECT position, embed_url, language, main, official, raw_url
+      FROM match_streams
+      WHERE match_id = 123
+    `).get(),
+    {
+      position: 0,
+      embed_url: "https://player.example/embed",
+      language: "en",
+      main: 1,
+      official: 1,
+      raw_url: "https://stream.example",
+    },
+  );
+  assert.equal(
+    db.prepare("SELECT opponent_type FROM match_teams WHERE match_id = 123 AND team_id = 1")
+      .get().opponent_type,
+    "Team",
+  );
+  assert.deepEqual(
+    db.prepare(`
+      SELECT dark_mode_image_url, location, modified_at
+      FROM teams
+      WHERE id = 1
+    `).get(),
+    {
+      dark_mode_image_url: "https://cdn.example/team-a-dark.png",
+      location: "US",
+      modified_at: "2026-11-20T12:00:00Z",
+    },
   );
   assert.equal(
     db
@@ -278,6 +524,24 @@ test("persists scores, serves the cache, and preserves it on sync failure", asyn
     assert.equal(body.matches[0].series.id, 20);
     assert.equal(body.matches[0].series.fullName, "Season 1 2026");
     assert.equal(body.matches[0].tournament.id, 30);
+    assert.equal(body.matches[0].tournament.detailedStats, false);
+    assert.equal(body.matches[0].tournament.hasBracket, true);
+    assert.equal(body.matches[0].tournament.liveSupported, false);
+    assert.equal(body.matches[0].teams[0].darkModeImageUrl, "https://cdn.example/team-a-dark.png");
+    assert.equal(body.matches[0].teams[0].location, "US");
+    assert.equal(body.matches[0].slug, "team-a-vs-team-b");
+    assert.equal(body.matches[0].detailedStats, true);
+    assert.equal(body.matches[0].scheduledAt, "2026-11-26T15:30:00Z");
+    assert.equal(body.matches[0].videogame.id, 3);
+    assert.deepEqual(body.matches[0].streamsList, [
+      {
+        embedUrl: "https://player.example/embed",
+        language: "en",
+        main: true,
+        official: true,
+        rawUrl: "https://stream.example",
+      },
+    ]);
     assert.equal(calls.length, 1);
 
     const filteredUrl = new URL(

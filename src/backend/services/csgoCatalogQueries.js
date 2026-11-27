@@ -33,12 +33,23 @@ const ENTITY_QUERIES = {
     from:
       "tournaments t LEFT JOIN series s ON s.id = t.series_id",
     select:
-      "t.id, t.series_id AS seriesId, t.name, t.slug, t.tier, t.begin_at AS beginAt, t.end_at AS endAt, s.name AS seriesName",
+      "t.id, t.series_id AS seriesId, t.league_id AS leagueId, t.name, t.slug, t.tier, t.begin_at AS beginAt, t.end_at AS endAt, t.type, t.country, t.detailed_stats AS detailedStats, t.winner_id AS winnerId, t.winner_type AS winnerType, t.region, t.modified_at AS modifiedAt, t.prizepool, t.has_bracket AS hasBracket, t.live_supported AS liveSupported, s.name AS seriesName",
     orderBy: "t.begin_at, t.id",
     search: "(t.name LIKE ? OR t.slug LIKE ?)",
     idColumn: "t.id",
     upcomingColumn: "t.begin_at",
     parentColumn: "t.series_id",
+  },
+  teams: {
+    from: "teams t",
+    select:
+      "t.id, t.acronym, t.dark_mode_image_url AS darkModeImageUrl, t.image_url AS imageUrl, t.location, t.modified_at AS modifiedAt, t.name, t.slug",
+    orderBy: "t.name, t.id",
+    search: "(t.name LIKE ? OR t.slug LIKE ? OR t.acronym LIKE ?)",
+    idColumn: "t.id",
+    slugColumn: "t.slug",
+    upcomingColumn: null,
+    parentColumn: null,
   },
 };
 
@@ -52,6 +63,7 @@ const ENTITY_DATE_COLUMNS = {
     begin_at: "t.begin_at",
     end_at: "t.end_at",
   },
+  teams: {},
 };
 
 const MATCH_DATE_COLUMNS = {
@@ -69,14 +81,58 @@ const MATCH_SELECT = `
   SELECT
     m.id AS matchId,
     m.tournament_id AS tournamentId,
+    m.league_id AS matchLeagueId,
+    m.series_id AS matchSeriesId,
+    m.slug,
     m.name,
     m.status,
     m.begin_at AS beginAt,
     m.expected_begin_at AS expectedBeginAt,
     m.end_at AS endAt,
+    m.scheduled_at AS scheduledAt,
+    m.original_scheduled_at AS originalScheduledAt,
+    m.detailed_stats AS detailedStats,
+    m.draw,
+    m.forfeit,
+    m.game_advantage AS gameAdvantage,
+    m.match_type AS matchType,
+    m.modified_at AS modifiedAt,
+    m.number_of_games AS numberOfGames,
+    m.rescheduled,
+    m.videogame_title_id AS videogameTitleId,
+    m.videogame_title_name AS videogameTitleName,
+    m.videogame_title_slug AS videogameTitleSlug,
+    m.videogame_title_videogame_id AS videogameTitleVideogameId,
+    m.videogame_version_current AS videogameVersionCurrent,
+    m.videogame_version_name AS videogameVersionName,
+    m.winner_id AS winnerId,
+    m.winner_type AS winnerType,
+    match_vg.id AS matchVideogameLocalId,
+    match_vg.pandascore_id AS matchVideogameId,
+    match_vg.name AS matchVideogameName,
+    match_vg.slug AS matchVideogameSlug,
+    winner_team.id AS winnerTeamId,
+    winner_team.name AS winnerTeamName,
+    winner_team.slug AS winnerTeamSlug,
+    winner_team.acronym AS winnerTeamAcronym,
+    winner_team.image_url AS winnerTeamImageUrl,
+    winner_team.dark_mode_image_url AS winnerTeamDarkModeImageUrl,
+    winner_team.location AS winnerTeamLocation,
+    winner_team.modified_at AS winnerTeamModifiedAt,
     t.name AS tournamentName,
     t.slug AS tournamentSlug,
     t.tier AS tournamentTier,
+    t.league_id AS tournamentLeagueId,
+    t.type AS tournamentType,
+    t.country AS tournamentCountry,
+    t.detailed_stats AS tournamentDetailedStats,
+    t.winner_id AS tournamentWinnerId,
+    t.winner_type AS tournamentWinnerType,
+    t.region AS tournamentRegion,
+    t.modified_at AS tournamentModifiedAt,
+    t.prizepool AS tournamentPrizepool,
+    t.has_bracket AS tournamentHasBracket,
+    t.live_supported AS tournamentLiveSupported,
     s.id AS seriesId,
     s.name AS seriesName,
     s.slug AS seriesSlug,
@@ -99,8 +155,15 @@ const MATCH_SELECT = `
     team.slug AS teamSlug,
     team.acronym AS teamAcronym,
     team.image_url AS teamImageUrl,
+    team.dark_mode_image_url AS teamDarkModeImageUrl,
+    team.location AS teamLocation,
+    team.modified_at AS teamModifiedAt,
+    mt.opponent_type AS opponentType,
     mt.score AS teamScore
   FROM matches m
+  LEFT JOIN videogames match_vg ON match_vg.id = m.videogame_id
+  LEFT JOIN teams winner_team
+    ON m.winner_type = 'Team' AND winner_team.id = m.winner_id
   LEFT JOIN tournaments t ON t.id = m.tournament_id
   LEFT JOIN series s ON s.id = t.series_id
   LEFT JOIN leagues l ON l.id = s.league_id
@@ -110,6 +173,17 @@ const MATCH_SELECT = `
 `;
 
 function mapEntityRow(type, row) {
+  if (type === "tournaments") {
+    return {
+      ...row,
+      detailedStats:
+        row.detailedStats === null ? null : Boolean(row.detailedStats),
+      hasBracket: row.hasBracket === null ? null : Boolean(row.hasBracket),
+      liveSupported:
+        row.liveSupported === null ? null : Boolean(row.liveSupported),
+    };
+  }
+
   if (type !== "leagues") {
     return row;
   }
@@ -262,7 +336,9 @@ export function listCsgoEntities(
   const values = [];
   if (search) {
     conditions.push(config.search);
-    values.push(`%${search}%`, `%${search}%`);
+    values.push(
+      ...Array(config.search.match(/\?/g).length).fill(`%${search}%`),
+    );
   }
   if (upcomingOnly) {
     if (!config.upcomingColumn) {
@@ -320,13 +396,15 @@ export function getCsgoEntity(type, id, db = getDatabase()) {
     throw new TypeError("Unsupported Counter-Strike catalog entity.");
   }
 
-  const row = db
-    .prepare(
-      `SELECT ${config.select}
-       FROM ${config.from}
-       WHERE ${config.idColumn} = ?`,
-    )
-    .get(id);
+  const lookupColumn =
+    type === "teams" && typeof id === "string" && config.slugColumn
+      ? config.slugColumn
+      : config.idColumn;
+  const row = db.prepare(
+    `SELECT ${config.select}
+     FROM ${config.from}
+     WHERE ${lookupColumn} = ?`,
+  ).get(id);
   return row ? mapEntityRow(type, row) : row;
 }
 
@@ -340,11 +418,71 @@ function groupMatchRows(rows) {
       match = {
         matchId: row.matchId,
         tournamentId: row.tournamentId,
+        leagueId: row.matchLeagueId ?? row.leagueId,
+        seriesId: row.matchSeriesId ?? row.seriesId,
+        slug: row.slug,
         name: row.name,
         status: row.status,
         beginAt: row.beginAt ?? row.expectedBeginAt,
         expectedBeginAt: row.expectedBeginAt,
         endAt: row.endAt,
+        scheduledAt: row.scheduledAt,
+        originalScheduledAt: row.originalScheduledAt,
+        detailedStats:
+          row.detailedStats === null ? null : Boolean(row.detailedStats),
+        draw: row.draw === null ? null : Boolean(row.draw),
+        forfeit: row.forfeit === null ? null : Boolean(row.forfeit),
+        gameAdvantage: row.gameAdvantage,
+        matchType: row.matchType,
+        modifiedAt: row.modifiedAt,
+        numberOfGames: row.numberOfGames,
+        rescheduled:
+          row.rescheduled === null ? null : Boolean(row.rescheduled),
+        videogame: row.matchVideogameLocalId
+          ? {
+              id: row.matchVideogameId ?? row.matchVideogameLocalId,
+              name: row.matchVideogameName,
+              slug: row.matchVideogameSlug,
+            }
+          : null,
+        videogameTitle:
+          row.videogameTitleId !== null
+            ? {
+                id: row.videogameTitleId,
+                name: row.videogameTitleName,
+                slug: row.videogameTitleSlug,
+                videogameId: row.videogameTitleVideogameId,
+              }
+            : null,
+        videogameVersion:
+          row.videogameVersionName !== null ||
+          row.videogameVersionCurrent !== null
+            ? {
+                current:
+                  row.videogameVersionCurrent === null
+                    ? null
+                    : Boolean(row.videogameVersionCurrent),
+                name: row.videogameVersionName,
+              }
+            : null,
+        winner:
+          row.winnerTeamId !== null
+            ? {
+                id: row.winnerTeamId,
+                name: row.winnerTeamName,
+                slug: row.winnerTeamSlug,
+                acronym: row.winnerTeamAcronym,
+                imageUrl: row.winnerTeamImageUrl,
+                darkModeImageUrl: row.winnerTeamDarkModeImageUrl,
+                location: row.winnerTeamLocation,
+                modifiedAt: row.winnerTeamModifiedAt,
+              }
+            : null,
+        winnerId: row.winnerId,
+        winnerType: row.winnerType,
+        opponents: [],
+        results: [],
+        streamsList: [],
         league: row.leagueId
           ? {
               id: row.leagueId,
@@ -380,6 +518,26 @@ function groupMatchRows(rows) {
               name: row.tournamentName,
               slug: row.tournamentSlug,
               tier: row.tournamentTier,
+              leagueId: row.tournamentLeagueId,
+              type: row.tournamentType,
+              country: row.tournamentCountry,
+              detailedStats:
+                row.tournamentDetailedStats === null
+                  ? null
+                  : Boolean(row.tournamentDetailedStats),
+              winnerId: row.tournamentWinnerId,
+              winnerType: row.tournamentWinnerType,
+              region: row.tournamentRegion,
+              modifiedAt: row.tournamentModifiedAt,
+              prizepool: row.tournamentPrizepool,
+              hasBracket:
+                row.tournamentHasBracket === null
+                  ? null
+                  : Boolean(row.tournamentHasBracket),
+              liveSupported:
+                row.tournamentLiveSupported === null
+                  ? null
+                  : Boolean(row.tournamentLiveSupported),
             }
           : null,
         teams: [],
@@ -394,12 +552,68 @@ function groupMatchRows(rows) {
         slug: row.teamSlug,
         acronym: row.teamAcronym,
         imageUrl: row.teamImageUrl,
+        darkModeImageUrl: row.teamDarkModeImageUrl,
+        location: row.teamLocation,
+        modifiedAt: row.teamModifiedAt,
+        type: row.opponentType,
         score: row.teamScore,
       });
+      match.opponents.push({
+        type: row.opponentType,
+        opponent: {
+          id: row.teamId,
+          name: row.teamName,
+          slug: row.teamSlug,
+          acronym: row.teamAcronym,
+          imageUrl: row.teamImageUrl,
+          darkModeImageUrl: row.teamDarkModeImageUrl,
+          location: row.teamLocation,
+          modifiedAt: row.teamModifiedAt,
+        },
+      });
+      if (row.teamScore !== null) {
+        match.results.push({ teamId: row.teamId, score: row.teamScore });
+      }
     }
   }
 
   return [...matches.values()];
+}
+
+function attachMatchStreams(matches, db) {
+  if (matches.length === 0) {
+    return matches;
+  }
+
+  const ids = matches.map(({ matchId }) => matchId);
+  const placeholders = ids.map(() => "?").join(", ");
+  const rows = db
+    .prepare(`
+      SELECT match_id AS matchId, position, embed_url AS embedUrl, language,
+             main, official, raw_url AS rawUrl
+      FROM match_streams
+      WHERE match_id IN (${placeholders})
+      ORDER BY match_id, position
+    `)
+    .all(...ids);
+  const streams = new Map();
+  for (const row of rows) {
+    if (!streams.has(row.matchId)) {
+      streams.set(row.matchId, []);
+    }
+    streams.get(row.matchId).push({
+      embedUrl: row.embedUrl,
+      language: row.language,
+      main: row.main === null ? null : Boolean(row.main),
+      official: row.official === null ? null : Boolean(row.official),
+      rawUrl: row.rawUrl,
+    });
+  }
+
+  for (const match of matches) {
+    match.streamsList = streams.get(match.matchId) ?? [];
+  }
+  return matches;
 }
 
 // Lista partidas por estado ou por entidade pai, com paginação por partida.
@@ -491,17 +705,18 @@ export function listCsgoMatches(
     .all(...idRows.map((row) => row.id));
 
   return {
-    data: groupMatchRows(rows),
+    data: attachMatchStreams(groupMatchRows(rows), db),
     pagination: { page, perPage, total },
   };
 }
 
-// Busca uma partida local pelo ID sem chamar endpoints restritos da PandaScore.
+// Busca uma partida local pelo ID ou slug sem chamar a PandaScore.
 export function getCsgoMatch(id, db = getDatabase()) {
+  const lookupColumn = typeof id === "string" ? "m.slug" : "m.id";
   const rows = db
-    .prepare(`${MATCH_SELECT} WHERE m.id = ? ORDER BY team.id`)
+    .prepare(`${MATCH_SELECT} WHERE ${lookupColumn} = ? ORDER BY team.id`)
     .all(id);
-  return groupMatchRows(rows)[0];
+  return attachMatchStreams(groupMatchRows(rows), db)[0];
 }
 
 // Lista jogos/mapas de uma partida, incluindo os placares das equipes.

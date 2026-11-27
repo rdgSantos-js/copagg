@@ -177,35 +177,74 @@ export async function syncCsgoMatches({
   `);
   const upsertTournament = db.prepare(`
     INSERT INTO tournaments
-      (id, series_id, name, slug, tier, begin_at, end_at)
+      (id, series_id, league_id, name, slug, tier, begin_at, end_at,
+       type, country, detailed_stats, winner_id, winner_type, region,
+       modified_at, prizepool, has_bracket, live_supported)
     VALUES
-      (@id, @seriesId, @name, @slug, @tier, @beginAt, @endAt)
+      (@id, @seriesId, @leagueId, @name, @slug, @tier, @beginAt, @endAt,
+       @type, @country, @detailedStats, @winnerId, @winnerType, @region,
+       @modifiedAt, @prizepool, @hasBracket, @liveSupported)
     ON CONFLICT(id) DO UPDATE SET
       series_id = COALESCE(excluded.series_id, tournaments.series_id),
+      league_id = COALESCE(excluded.league_id, tournaments.league_id),
       name = COALESCE(excluded.name, tournaments.name),
       slug = COALESCE(excluded.slug, tournaments.slug),
       tier = COALESCE(excluded.tier, tournaments.tier),
       begin_at = COALESCE(excluded.begin_at, tournaments.begin_at),
-      end_at = COALESCE(excluded.end_at, tournaments.end_at)
+      end_at = COALESCE(excluded.end_at, tournaments.end_at),
+      type = COALESCE(excluded.type, tournaments.type),
+      country = COALESCE(excluded.country, tournaments.country),
+      detailed_stats = COALESCE(excluded.detailed_stats, tournaments.detailed_stats),
+      winner_id = COALESCE(excluded.winner_id, tournaments.winner_id),
+      winner_type = COALESCE(excluded.winner_type, tournaments.winner_type),
+      region = COALESCE(excluded.region, tournaments.region),
+      modified_at = COALESCE(excluded.modified_at, tournaments.modified_at),
+      prizepool = COALESCE(excluded.prizepool, tournaments.prizepool),
+      has_bracket = COALESCE(excluded.has_bracket, tournaments.has_bracket),
+      live_supported = COALESCE(excluded.live_supported, tournaments.live_supported)
   `);
   const upsertTeam = db.prepare(`
-    INSERT INTO teams (id, name, slug, acronym, image_url)
-    VALUES (@id, @name, @slug, @acronym, @imageUrl)
+    INSERT INTO teams
+      (id, name, slug, acronym, image_url, dark_mode_image_url, location,
+       modified_at)
+    VALUES
+      (@id, @name, @slug, @acronym, @imageUrl, @darkModeImageUrl, @location,
+       @modifiedAt)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       slug = COALESCE(excluded.slug, teams.slug),
       acronym = COALESCE(excluded.acronym, teams.acronym),
-      image_url = COALESCE(excluded.image_url, teams.image_url)
+      image_url = COALESCE(excluded.image_url, teams.image_url),
+      dark_mode_image_url = COALESCE(
+        excluded.dark_mode_image_url,
+        teams.dark_mode_image_url
+      ),
+      location = COALESCE(excluded.location, teams.location),
+      modified_at = COALESCE(excluded.modified_at, teams.modified_at)
   `);
   const upsertMatch = db.prepare(`
     INSERT INTO matches
-      (id, tournament_id, name, status, begin_at, expected_begin_at,
-       end_at, is_running, fetched_at)
+      (id, tournament_id, league_id, series_id, videogame_id, slug, name,
+       status, begin_at, expected_begin_at, end_at, scheduled_at,
+       original_scheduled_at, detailed_stats, draw, forfeit, game_advantage,
+       match_type, modified_at, number_of_games, rescheduled,
+       videogame_title_id, videogame_title_name, videogame_title_slug,
+       videogame_title_videogame_id, videogame_version_current,
+       videogame_version_name, winner_id, winner_type, is_running, fetched_at)
     VALUES
-      (@matchId, @tournamentId, @name, @status, @beginAt,
-       @expectedBeginAt, @endAt, @isRunning, @fetchedAt)
+      (@matchId, @tournamentId, @leagueId, @seriesId, @videogameId, @slug,
+       @name, @status, @beginAt, @expectedBeginAt, @endAt, @scheduledAt,
+       @originalScheduledAt, @detailedStats, @draw, @forfeit, @gameAdvantage,
+       @matchType, @modifiedAt, @numberOfGames, @rescheduled,
+       @videogameTitleId, @videogameTitleName, @videogameTitleSlug,
+       @videogameTitleVideogameId, @videogameVersionCurrent,
+       @videogameVersionName, @winnerId, @winnerType, @isRunning, @fetchedAt)
     ON CONFLICT(id) DO UPDATE SET
       tournament_id = COALESCE(excluded.tournament_id, matches.tournament_id),
+      league_id = COALESCE(excluded.league_id, matches.league_id),
+      series_id = COALESCE(excluded.series_id, matches.series_id),
+      videogame_id = COALESCE(excluded.videogame_id, matches.videogame_id),
+      slug = COALESCE(excluded.slug, matches.slug),
       name = COALESCE(excluded.name, matches.name),
       status = excluded.status,
       begin_at = COALESCE(excluded.begin_at, matches.begin_at),
@@ -214,6 +253,45 @@ export async function syncCsgoMatches({
         matches.expected_begin_at
       ),
       end_at = COALESCE(excluded.end_at, matches.end_at),
+      scheduled_at = COALESCE(excluded.scheduled_at, matches.scheduled_at),
+      original_scheduled_at = COALESCE(
+        excluded.original_scheduled_at,
+        matches.original_scheduled_at
+      ),
+      detailed_stats = COALESCE(excluded.detailed_stats, matches.detailed_stats),
+      draw = COALESCE(excluded.draw, matches.draw),
+      forfeit = COALESCE(excluded.forfeit, matches.forfeit),
+      game_advantage = COALESCE(excluded.game_advantage, matches.game_advantage),
+      match_type = COALESCE(excluded.match_type, matches.match_type),
+      modified_at = COALESCE(excluded.modified_at, matches.modified_at),
+      number_of_games = COALESCE(excluded.number_of_games, matches.number_of_games),
+      rescheduled = COALESCE(excluded.rescheduled, matches.rescheduled),
+      videogame_title_id = COALESCE(
+        excluded.videogame_title_id,
+        matches.videogame_title_id
+      ),
+      videogame_title_name = COALESCE(
+        excluded.videogame_title_name,
+        matches.videogame_title_name
+      ),
+      videogame_title_slug = COALESCE(
+        excluded.videogame_title_slug,
+        matches.videogame_title_slug
+      ),
+      videogame_title_videogame_id = COALESCE(
+        excluded.videogame_title_videogame_id,
+        matches.videogame_title_videogame_id
+      ),
+      videogame_version_current = COALESCE(
+        excluded.videogame_version_current,
+        matches.videogame_version_current
+      ),
+      videogame_version_name = COALESCE(
+        excluded.videogame_version_name,
+        matches.videogame_version_name
+      ),
+      winner_id = COALESCE(excluded.winner_id, matches.winner_id),
+      winner_type = COALESCE(excluded.winner_type, matches.winner_type),
       is_running = CASE
         WHEN @updateRunningStatus = 1 THEN excluded.is_running
         ELSE matches.is_running
@@ -224,9 +302,20 @@ export async function syncCsgoMatches({
     "DELETE FROM match_teams WHERE match_id = ?",
   );
   const upsertMatchTeam = db.prepare(`
-    INSERT INTO match_teams (match_id, team_id, score)
-    VALUES (@matchId, @teamId, @score)
-    ON CONFLICT(match_id, team_id) DO UPDATE SET score = excluded.score
+    INSERT INTO match_teams (match_id, team_id, opponent_type, score)
+    VALUES (@matchId, @teamId, @opponentType, @score)
+    ON CONFLICT(match_id, team_id) DO UPDATE SET
+      opponent_type = COALESCE(excluded.opponent_type, match_teams.opponent_type),
+      score = COALESCE(excluded.score, match_teams.score)
+  `);
+  const deleteMatchStreams = db.prepare(
+    "DELETE FROM match_streams WHERE match_id = ?",
+  );
+  const upsertMatchStream = db.prepare(`
+    INSERT INTO match_streams
+      (match_id, position, embed_url, language, main, official, raw_url)
+    VALUES
+      (@matchId, @position, @embedUrl, @language, @main, @official, @rawUrl)
   `);
   const deleteGames = db.prepare("DELETE FROM games WHERE match_id = ?");
   const upsertGame = db.prepare(`
@@ -265,18 +354,26 @@ export async function syncCsgoMatches({
     }
 
     for (const match of records) {
-      if (match.league) {
+      const videogame = match.videogame?.slug
+        ? match.videogame
+        : match.league?.videogame;
+      let videogameId = null;
+      if (videogame?.slug) {
         upsertVideogame.run({
-          ...match.league.videogame,
-          pandascoreId: null,
+          pandascoreId: match.videogame?.id ?? null,
+          name: videogame.name,
+          slug: videogame.slug,
         });
-        const videogame = getVideogame.get(match.league.videogame.slug);
-        if (!videogame) {
+        videogameId = getVideogame.get(videogame.slug)?.id ?? null;
+      }
+
+      if (match.league) {
+        if (videogameId === null) {
           throw new Error("Could not resolve the persisted videogame.");
         }
         upsertLeague.run({
           ...match.league,
-          videogameId: videogame.id,
+          videogameId,
         });
       }
 
@@ -291,25 +388,65 @@ export async function syncCsgoMatches({
       for (const team of match.teams) {
         upsertTeam.run(team);
       }
+      if (
+        match.winner &&
+        !match.teams.some((team) => team.id === match.winner.id)
+      ) {
+        upsertTeam.run(match.winner);
+      }
 
       upsertMatch.run({
         matchId: match.matchId,
         tournamentId: match.tournamentId,
+        leagueId: match.leagueId,
+        seriesId: match.seriesId,
+        videogameId,
+        slug: match.slug,
         name: match.name,
         status: match.status,
         beginAt: match.beginAt,
         expectedBeginAt: match.expectedBeginAt,
         endAt: match.endAt,
+        scheduledAt: match.scheduledAt,
+        originalScheduledAt: match.originalScheduledAt,
+        detailedStats: match.detailedStats,
+        draw: match.draw,
+        forfeit: match.forfeit,
+        gameAdvantage: match.gameAdvantage,
+        matchType: match.matchType,
+        modifiedAt: match.modifiedAt,
+        numberOfGames: match.numberOfGames,
+        rescheduled: match.rescheduled,
+        videogameTitleId: match.videogameTitle?.id ?? null,
+        videogameTitleName: match.videogameTitle?.name ?? null,
+        videogameTitleSlug: match.videogameTitle?.slug ?? null,
+        videogameTitleVideogameId:
+          match.videogameTitle?.videogameId ?? null,
+        videogameVersionCurrent: match.videogameVersion?.current ?? null,
+        videogameVersionName: match.videogameVersion?.name ?? null,
+        winnerId: match.winnerId,
+        winnerType: match.winnerType,
         isRunning: state === "running" && match.status === "running" ? 1 : 0,
         updateRunningStatus: state === "running" ? 1 : 0,
         fetchedAt,
       });
+
+      if (match.streamsList !== null) {
+        deleteMatchStreams.run(match.matchId);
+        for (const stream of match.streamsList) {
+          upsertMatchStream.run({
+            matchId: match.matchId,
+            ...stream,
+          });
+        }
+      }
 
       deleteMatchTeams.run(match.matchId);
       for (const team of match.teams) {
         upsertMatchTeam.run({
           matchId: match.matchId,
           teamId: team.id,
+          opponentType: team.type,
           score: team.score,
         });
       }
@@ -331,6 +468,9 @@ export async function syncCsgoMatches({
                 slug: null,
                 acronym: null,
                 imageUrl: null,
+                darkModeImageUrl: null,
+                location: null,
+                modifiedAt: null,
               });
             }
 

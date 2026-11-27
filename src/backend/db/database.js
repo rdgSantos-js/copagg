@@ -80,11 +80,22 @@ export function createDatabase(databasePath = defaultDatabasePath) {
     CREATE TABLE IF NOT EXISTS tournaments (
       id INTEGER PRIMARY KEY,
       series_id INTEGER REFERENCES series(id),
+      league_id INTEGER REFERENCES leagues(id),
       name TEXT,
       slug TEXT,
       tier TEXT,
       begin_at TEXT,
-      end_at TEXT
+      end_at TEXT,
+      type TEXT,
+      country TEXT,
+      detailed_stats INTEGER,
+      winner_id INTEGER,
+      winner_type TEXT,
+      region TEXT,
+      modified_at TEXT,
+      prizepool TEXT,
+      has_bracket INTEGER,
+      live_supported INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS teams (
@@ -92,17 +103,42 @@ export function createDatabase(databasePath = defaultDatabasePath) {
       name TEXT NOT NULL,
       slug TEXT,
       acronym TEXT,
-      image_url TEXT
+      image_url TEXT,
+      dark_mode_image_url TEXT,
+      location TEXT,
+      modified_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS matches (
       id INTEGER PRIMARY KEY,
       tournament_id INTEGER REFERENCES tournaments(id),
+      league_id INTEGER REFERENCES leagues(id),
+      series_id INTEGER REFERENCES series(id),
+      videogame_id INTEGER REFERENCES videogames(id),
+      slug TEXT,
       name TEXT,
       status TEXT NOT NULL,
       begin_at TEXT,
       expected_begin_at TEXT,
       end_at TEXT,
+      scheduled_at TEXT,
+      original_scheduled_at TEXT,
+      detailed_stats INTEGER,
+      draw INTEGER,
+      forfeit INTEGER,
+      game_advantage INTEGER,
+      match_type TEXT,
+      modified_at TEXT,
+      number_of_games INTEGER,
+      rescheduled INTEGER,
+      videogame_title_id INTEGER,
+      videogame_title_name TEXT,
+      videogame_title_slug TEXT,
+      videogame_title_videogame_id INTEGER,
+      videogame_version_current INTEGER,
+      videogame_version_name TEXT,
+      winner_id INTEGER,
+      winner_type TEXT,
       is_running INTEGER NOT NULL DEFAULT 1,
       fetched_at TEXT NOT NULL
     );
@@ -110,8 +146,20 @@ export function createDatabase(databasePath = defaultDatabasePath) {
     CREATE TABLE IF NOT EXISTS match_teams (
       match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
       team_id INTEGER NOT NULL REFERENCES teams(id),
+      opponent_type TEXT,
       score INTEGER,
       PRIMARY KEY (match_id, team_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS match_streams (
+      match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL,
+      embed_url TEXT,
+      language TEXT,
+      main INTEGER,
+      official INTEGER,
+      raw_url TEXT,
+      PRIMARY KEY (match_id, position)
     );
 
     CREATE TABLE IF NOT EXISTS games (
@@ -223,6 +271,75 @@ export function createDatabase(databasePath = defaultDatabasePath) {
     if (!seriesColumns.some((existing) => existing.name === column)) {
       db.exec(`ALTER TABLE series ADD COLUMN ${column} ${type}`);
     }
+  }
+
+  const tournamentColumns = db.pragma("table_info(tournaments)");
+  const missingTournamentColumns = {
+    league_id: "INTEGER REFERENCES leagues(id)",
+    type: "TEXT",
+    country: "TEXT",
+    detailed_stats: "INTEGER",
+    winner_id: "INTEGER",
+    winner_type: "TEXT",
+    region: "TEXT",
+    modified_at: "TEXT",
+    prizepool: "TEXT",
+    has_bracket: "INTEGER",
+    live_supported: "INTEGER",
+  };
+  for (const [column, type] of Object.entries(missingTournamentColumns)) {
+    if (!tournamentColumns.some((existing) => existing.name === column)) {
+      db.exec(`ALTER TABLE tournaments ADD COLUMN ${column} ${type}`);
+    }
+  }
+
+  const teamColumns = db.pragma("table_info(teams)");
+  const missingTeamColumns = {
+    dark_mode_image_url: "TEXT",
+    location: "TEXT",
+    modified_at: "TEXT",
+  };
+  for (const [column, type] of Object.entries(missingTeamColumns)) {
+    if (!teamColumns.some((existing) => existing.name === column)) {
+      db.exec(`ALTER TABLE teams ADD COLUMN ${column} ${type}`);
+    }
+  }
+
+  const matchColumns = db.pragma("table_info(matches)");
+  const missingMatchColumns = {
+    league_id: "INTEGER REFERENCES leagues(id)",
+    series_id: "INTEGER REFERENCES series(id)",
+    videogame_id: "INTEGER REFERENCES videogames(id)",
+    slug: "TEXT",
+    scheduled_at: "TEXT",
+    original_scheduled_at: "TEXT",
+    detailed_stats: "INTEGER",
+    draw: "INTEGER",
+    forfeit: "INTEGER",
+    game_advantage: "INTEGER",
+    match_type: "TEXT",
+    modified_at: "TEXT",
+    number_of_games: "INTEGER",
+    rescheduled: "INTEGER",
+    videogame_title_id: "INTEGER",
+    videogame_title_name: "TEXT",
+    videogame_title_slug: "TEXT",
+    videogame_title_videogame_id: "INTEGER",
+    videogame_version_current: "INTEGER",
+    videogame_version_name: "TEXT",
+    winner_id: "INTEGER",
+    winner_type: "TEXT",
+  };
+  for (const [column, type] of Object.entries(missingMatchColumns)) {
+    if (!matchColumns.some((existing) => existing.name === column)) {
+      db.exec(`ALTER TABLE matches ADD COLUMN ${column} ${type}`);
+    }
+  }
+  db.exec("CREATE INDEX IF NOT EXISTS idx_matches_slug ON matches (slug)");
+
+  const matchTeamColumns = db.pragma("table_info(match_teams)");
+  if (!matchTeamColumns.some((column) => column.name === "opponent_type")) {
+    db.exec("ALTER TABLE match_teams ADD COLUMN opponent_type TEXT");
   }
 
   db.transaction(() => {

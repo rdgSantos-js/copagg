@@ -10,6 +10,11 @@ Os dados das competições são armazenados de forma relacional, seguindo a hier
 da PandaScore: `videogames -> leagues -> series -> tournaments -> matches -> games`. As equipes e
 seus placares ficam nas tabelas `teams`, `match_teams` e `game_teams`.
 
+As partidas armazenam também slug, horários de agendamento, formato, quantidade de
+jogos, estado de reagendamento, estatísticas detalhadas, desistência, empate,
+vantagem de jogo, versão e título do videogame e vencedor. Os participantes e
+resultados ficam em `match_teams`, e as transmissões em `match_streams`.
+
 ## Configuração
 
 Crie um arquivo `.env` na raiz do projeto:
@@ -60,10 +65,13 @@ dentro do limite por hora do plano Free.
 Todas as rotas abaixo consultam somente o SQLite. Elas não acessam os endpoints
 restritos de detalhes de partidas ou de jogos da PandaScore. Um detalhe ou jogo só
 estará disponível se tiver vindo em uma resposta já sincronizada de um endpoint
-disponível no plano Free.
+disponível no plano Free. Os times listados e consultados localmente são os que
+apareceram nas partidas sincronizadas.
 
 | Rota | Descrição |
 | --- | --- |
+| `GET /api/csgo/teams[?page=1&per_page=50&search=...]` | Lista os times sincronizados |
+| `GET /api/csgo/teams/:id` | Consulta um time local por ID ou slug |
 | `GET /api/csgo/leagues[?page=1&per_page=50&search=...]` | Lista as ligas sincronizadas |
 | `GET /api/csgo/leagues/:id` | Consulta uma liga |
 | `GET /api/csgo/leagues/:id/series` | Lista as séries de uma liga |
@@ -78,16 +86,16 @@ disponível no plano Free.
 | `GET /api/csgo/tournaments/:id/matches` | Lista partidas associadas a um torneio |
 | `GET /api/csgo/matches?state=upcoming\|running\|past` | Lista partidas, opcionalmente por estado |
 | `GET /api/csgo/matches/upcoming\|running\|past` | Lista partidas por estado |
-| `GET /api/csgo/matches/:id` | Consulta uma partida sincronizada localmente |
+| `GET /api/csgo/matches/:id` | Consulta uma partida sincronizada localmente por ID ou slug |
 | `GET /api/csgo/matches/:id/games` | Lista os jogos/mapas incluídos nos dados da partida |
 | `GET /api/csgo/games/:id` | Consulta um jogo/mapa sincronizado localmente |
 | `GET /api/csgo/live-scores` | Consulta os placares em andamento armazenados no cache |
 
 As rotas de coleção aceitam `page` (ou `page[number]`) e `per_page` (ou
-`page[size]`), com no máximo 100 itens por página. As listas de ligas, séries e
-torneios também aceitam o parâmetro `search`, que pesquisa por nome ou slug. As
-respostas das listas incluem `data` e `pagination`. As partidas passadas ficam
-limitadas aos últimos 30 dias.
+`page[size]`), com no máximo 100 itens por página. As listas de times, ligas,
+séries e torneios também aceitam `search`; para times, a pesquisa considera nome,
+slug e sigla. As respostas das listas incluem `data` e `pagination`. As partidas
+passadas ficam limitadas aos últimos 30 dias.
 
 Rotas de séries, torneios, partidas, jogos/mapas e placares ao vivo aceitam
 intervalos inclusivos para os campos de data-hora disponíveis em cada entidade.

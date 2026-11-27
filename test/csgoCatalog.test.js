@@ -33,6 +33,16 @@ test("migrates existing leagues to the videogames relation", (t) => {
     );
     INSERT INTO leagues (id, name, slug)
     VALUES (10, 'League', 'league');
+    CREATE TABLE teams (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT,
+      acronym TEXT,
+      image_url TEXT
+    );
+    INSERT INTO teams (id, name, slug, acronym, image_url)
+    VALUES (1804, 'VGJ.Thunder', 'vgj-thunder', 'VGJ.T',
+            'https://cdn.example/vgj.png');
     CREATE TABLE series (
       id INTEGER PRIMARY KEY,
       league_id INTEGER REFERENCES leagues(id),
@@ -43,6 +53,38 @@ test("migrates existing leagues to the videogames relation", (t) => {
     );
     INSERT INTO series (id, league_id, name, slug)
     VALUES (20, 10, 'Series', 'series');
+    CREATE TABLE tournaments (
+      id INTEGER PRIMARY KEY,
+      series_id INTEGER REFERENCES series(id),
+      name TEXT,
+      slug TEXT,
+      tier TEXT,
+      begin_at TEXT,
+      end_at TEXT
+    );
+    INSERT INTO tournaments (id, series_id, name, slug)
+    VALUES (30, 20, 'Tournament', 'tournament');
+    CREATE TABLE matches (
+      id INTEGER PRIMARY KEY,
+      tournament_id INTEGER REFERENCES tournaments(id),
+      name TEXT,
+      status TEXT NOT NULL,
+      begin_at TEXT,
+      expected_begin_at TEXT,
+      end_at TEXT,
+      is_running INTEGER NOT NULL DEFAULT 1,
+      fetched_at TEXT NOT NULL
+    );
+    INSERT INTO matches (id, tournament_id, name, status, fetched_at)
+    VALUES (40, 30, 'Match', 'finished', '2026-11-27T00:00:00Z');
+    CREATE TABLE match_teams (
+      match_id INTEGER NOT NULL REFERENCES matches(id),
+      team_id INTEGER NOT NULL REFERENCES teams(id),
+      score INTEGER,
+      PRIMARY KEY (match_id, team_id)
+    );
+    INSERT INTO match_teams (match_id, team_id, score)
+    VALUES (40, 1804, 2);
   `);
   legacyDb.close();
 
@@ -78,6 +120,125 @@ test("migrates existing leagues to the videogames relation", (t) => {
     ["full_name", "modified_at", "season", "winner_id", "winner_type", "year"],
   );
   assert.equal(db.prepare("SELECT name FROM series WHERE id = 20").get().name, "Series");
+  assert.deepEqual(
+    db.pragma("table_info(tournaments)")
+      .filter((column) =>
+        [
+          "league_id",
+          "type",
+          "country",
+          "detailed_stats",
+          "winner_id",
+          "winner_type",
+          "region",
+          "modified_at",
+          "prizepool",
+          "has_bracket",
+          "live_supported",
+        ].includes(column.name),
+      )
+      .map((column) => column.name),
+    [
+      "league_id",
+      "type",
+      "country",
+      "detailed_stats",
+      "winner_id",
+      "winner_type",
+      "region",
+      "modified_at",
+      "prizepool",
+      "has_bracket",
+      "live_supported",
+    ],
+  );
+  assert.equal(
+    db.prepare("SELECT name FROM tournaments WHERE id = 30").get().name,
+    "Tournament",
+  );
+  assert.deepEqual(
+    db.pragma("table_info(teams)")
+      .filter((column) =>
+        ["dark_mode_image_url", "location", "modified_at"].includes(column.name),
+      )
+      .map((column) => column.name),
+    ["dark_mode_image_url", "location", "modified_at"],
+  );
+  assert.deepEqual(
+    db.prepare("SELECT name, slug, acronym, image_url FROM teams WHERE id = 1804")
+      .get(),
+    {
+      name: "VGJ.Thunder",
+      slug: "vgj-thunder",
+      acronym: "VGJ.T",
+      image_url: "https://cdn.example/vgj.png",
+    },
+  );
+  assert.deepEqual(
+    db.pragma("table_info(matches)")
+      .filter((column) =>
+        [
+          "league_id",
+          "series_id",
+          "videogame_id",
+          "slug",
+          "scheduled_at",
+          "original_scheduled_at",
+          "detailed_stats",
+          "draw",
+          "forfeit",
+          "game_advantage",
+          "match_type",
+          "modified_at",
+          "number_of_games",
+          "rescheduled",
+          "videogame_title_id",
+          "videogame_title_name",
+          "videogame_title_slug",
+          "videogame_title_videogame_id",
+          "videogame_version_current",
+          "videogame_version_name",
+          "winner_id",
+          "winner_type",
+        ].includes(column.name),
+      )
+      .map((column) => column.name),
+    [
+      "league_id",
+      "series_id",
+      "videogame_id",
+      "slug",
+      "scheduled_at",
+      "original_scheduled_at",
+      "detailed_stats",
+      "draw",
+      "forfeit",
+      "game_advantage",
+      "match_type",
+      "modified_at",
+      "number_of_games",
+      "rescheduled",
+      "videogame_title_id",
+      "videogame_title_name",
+      "videogame_title_slug",
+      "videogame_title_videogame_id",
+      "videogame_version_current",
+      "videogame_version_name",
+      "winner_id",
+      "winner_type",
+    ],
+  );
+  assert.deepEqual(
+    db.pragma("table_info(match_teams)")
+      .filter((column) => column.name === "opponent_type")
+      .map((column) => column.name),
+    ["opponent_type"],
+  );
+  assert.equal(
+    db.prepare("SELECT score FROM match_teams WHERE match_id = 40 AND team_id = 1804")
+      .get().score,
+    2,
+  );
   assert.deepEqual(db.pragma("foreign_key_check"), []);
 });
 
@@ -168,7 +329,20 @@ test("syncs league, series, and tournament catalogs", async (t) => {
         serie_id: 20,
         name: "Tournament",
         slug: "tournament",
-        tier: "A",
+        type: "online/offline",
+        country: null,
+        begin_at: "2026-11-21T14:00:00Z",
+        detailed_stats: false,
+        end_at: "2026-12-12T22:00:00Z",
+        winner_id: null,
+        winner_type: "Team",
+        region: "WEU",
+        modified_at: "2026-11-12T14:14:29Z",
+        league_id: 10,
+        prizepool: "5000 Euro",
+        tier: "d",
+        has_bracket: true,
+        live_supported: false,
         serie: { id: 20, league_id: 10 },
       },
     ],
@@ -233,6 +407,31 @@ test("syncs league, series, and tournament catalogs", async (t) => {
   assert.equal(
     db.prepare("SELECT series_id FROM tournaments WHERE id = 30").get().series_id,
     20,
+  );
+  assert.deepEqual(
+    db.prepare(`
+      SELECT league_id, type, country, begin_at, detailed_stats, end_at,
+             winner_id, winner_type, region, modified_at, prizepool, tier,
+             has_bracket, live_supported
+      FROM tournaments
+      WHERE id = 30
+    `).get(),
+    {
+      league_id: 10,
+      type: "online/offline",
+      country: null,
+      begin_at: "2026-11-21T14:00:00Z",
+      detailed_stats: 0,
+      end_at: "2026-12-12T22:00:00Z",
+      winner_id: null,
+      winner_type: "Team",
+      region: "WEU",
+      modified_at: "2026-11-12T14:14:29Z",
+      prizepool: "5000 Euro",
+      tier: "d",
+      has_bracket: 1,
+      live_supported: 0,
+    },
   );
   assert.equal(
     db.prepare("SELECT COUNT(*) AS count FROM sync_metadata").get().count,
@@ -302,9 +501,29 @@ test("serves catalog routes from SQLite and validates local pagination", async (
   const laterBeginAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
   const match = {
     id: 501,
+    slug: "team-a-vs-team-b",
     name: "Team A vs Team B",
     status: "not_started",
     begin_at: beginAt,
+    detailed_stats: true,
+    draw: false,
+    end_at: "2026-11-27T18:00:00Z",
+    forfeit: false,
+    game_advantage: null,
+    league_id: 10,
+    match_type: "best_of",
+    modified_at: "2026-11-27T18:01:00Z",
+    number_of_games: 3,
+    original_scheduled_at: beginAt,
+    rescheduled: false,
+    scheduled_at: beginAt,
+    serie_id: 20,
+    tournament_id: 30,
+    videogame: { id: 3, name: "Counter-Strike", slug: "cs-go" },
+    videogame_title: null,
+    videogame_version: { current: true, name: "1.0" },
+    winner_id: 1,
+    winner_type: "Team",
     league: {
       id: 10,
       name: "League",
@@ -328,11 +547,59 @@ test("serves catalog routes from SQLite and validates local pagination", async (
       serie_id: 20,
       name: "Tournament",
       begin_at: beginAt,
+      type: "online/offline",
+      country: "DE",
+      detailed_stats: true,
+      end_at: "2026-12-12T22:00:00Z",
+      winner_id: null,
+      winner_type: "Team",
+      region: "WEU",
+      modified_at: "2026-11-12T14:14:29Z",
+      league_id: 10,
+      prizepool: "5000 Euro",
+      tier: "d",
+      has_bracket: true,
+      live_supported: false,
     },
     opponents: [
-      { opponent: { id: 1, name: "Team A" } },
-      { opponent: { id: 2, name: "Team B" } },
+      {
+        type: "Team",
+        opponent: {
+          id: 1,
+          name: "Team A",
+          slug: "team-a",
+          acronym: "TA",
+          image_url: "https://cdn.example/team-a.png",
+          dark_mode_image_url: "https://cdn.example/team-a-dark.png",
+          location: "US",
+          modified_at: "2026-11-20T12:00:00Z",
+        },
+      },
+      { type: "Team", opponent: { id: 2, name: "Team B" } },
     ],
+    results: [
+      { team_id: 1, score: 0 },
+      { team_id: 2, score: 0 },
+    ],
+    streams_list: [
+      {
+        embed_url: "https://player.example/embed",
+        language: "en",
+        main: true,
+        official: true,
+        raw_url: "https://stream.example",
+      },
+    ],
+    winner: {
+      id: 1,
+      name: "Team A",
+      slug: "team-a",
+      acronym: "TA",
+      image_url: "https://cdn.example/team-a.png",
+      dark_mode_image_url: "https://cdn.example/team-a-dark.png",
+      location: "US",
+      modified_at: "2026-11-20T12:00:00Z",
+    },
     games: [
       {
         id: 601,
@@ -349,6 +616,7 @@ test("serves catalog routes from SQLite and validates local pagination", async (
   const laterMatch = {
     ...match,
     id: 502,
+    slug: "team-a-vs-team-b-2",
     begin_at: laterBeginAt,
     games: [
       {
@@ -372,6 +640,26 @@ test("serves catalog routes from SQLite and validates local pagination", async (
   assert.equal(leagueBody.data[0].url, "https://league.example");
   assert.equal(leagueBody.data[0].imageUrl, "https://cdn.example/league.png");
 
+  const teams = await fetch(`${baseUrl}/teams?search=TA`);
+  const teamsBody = await teams.json();
+  assert.deepEqual(teamsBody.data, [
+    {
+      id: 1,
+      acronym: "TA",
+      darkModeImageUrl: "https://cdn.example/team-a-dark.png",
+      imageUrl: "https://cdn.example/team-a.png",
+      location: "US",
+      modifiedAt: "2026-11-20T12:00:00Z",
+      name: "Team A",
+      slug: "team-a",
+    },
+  ]);
+  const teamBySlug = await fetch(`${baseUrl}/teams/team-a`);
+  assert.deepEqual(await teamBySlug.json(), teamsBody.data[0]);
+  const teamById = await fetch(`${baseUrl}/teams/1`);
+  assert.equal((await teamById.json()).id, 1);
+  assert.equal((await fetch(`${baseUrl}/teams/missing-team`)).status, 404);
+
   const series = await fetch(`${baseUrl}/leagues/10/series`);
   const seriesBody = await series.json();
   assert.equal(seriesBody.data[0].id, 20);
@@ -384,7 +672,32 @@ test("serves catalog routes from SQLite and validates local pagination", async (
   assert.equal((await (await fetch(seriesByDate)).json()).data[0].id, 20);
 
   const tournaments = await fetch(`${baseUrl}/series/20/tournaments`);
-  assert.equal((await tournaments.json()).data[0].id, 30);
+  const tournamentsBody = await tournaments.json();
+  assert.equal(tournamentsBody.data[0].id, 30);
+  assert.deepEqual(
+    {
+      type: tournamentsBody.data[0].type,
+      country: tournamentsBody.data[0].country,
+      detailedStats: tournamentsBody.data[0].detailedStats,
+      winnerType: tournamentsBody.data[0].winnerType,
+      region: tournamentsBody.data[0].region,
+      prizepool: tournamentsBody.data[0].prizepool,
+      tier: tournamentsBody.data[0].tier,
+      hasBracket: tournamentsBody.data[0].hasBracket,
+      liveSupported: tournamentsBody.data[0].liveSupported,
+    },
+    {
+      type: "online/offline",
+      country: "DE",
+      detailedStats: true,
+      winnerType: "Team",
+      region: "WEU",
+      prizepool: "5000 Euro",
+      tier: "d",
+      hasBracket: true,
+      liveSupported: false,
+    },
+  );
   const tournamentsByDate = new URL(`${baseUrl}/tournaments`);
   tournamentsByDate.searchParams.set(
     "range[begin_at]",
@@ -441,6 +754,30 @@ test("serves catalog routes from SQLite and validates local pagination", async (
 
   const matchDetail = await fetch(`${baseUrl}/matches/501`);
   assert.equal((await matchDetail.json()).matchId, 501);
+  const matchBySlug = await fetch(`${baseUrl}/matches/team-a-vs-team-b`);
+  const matchBySlugBody = await matchBySlug.json();
+  assert.equal(matchBySlugBody.matchId, 501);
+  assert.equal(matchBySlugBody.detailedStats, true);
+  assert.equal(matchBySlugBody.draw, false);
+  assert.equal(matchBySlugBody.matchType, "best_of");
+  assert.equal(matchBySlugBody.numberOfGames, 3);
+  assert.equal(matchBySlugBody.videogame.id, 3);
+  assert.equal(matchBySlugBody.videogameVersion.current, true);
+  assert.equal(matchBySlugBody.winner.name, "Team A");
+  assert.deepEqual(matchBySlugBody.streamsList, [
+    {
+      embedUrl: "https://player.example/embed",
+      language: "en",
+      main: true,
+      official: true,
+      rawUrl: "https://stream.example",
+    },
+  ]);
+  assert.equal(matchBySlugBody.opponents[0].type, "Team");
+  assert.deepEqual(matchBySlugBody.results, [
+    { teamId: 1, score: 0 },
+    { teamId: 2, score: 0 },
+  ]);
 
   const games = await fetch(`${baseUrl}/matches/501/games`);
   const gamesBody = await games.json();

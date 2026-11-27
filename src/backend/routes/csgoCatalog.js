@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------------------------
-// Expõe consultas locais para leagues, series, tournaments, matches e games do Counter-Strike.
+// Expõe consultas locais para teams, competições, partidas e jogos de Counter-Strike.
 // ------------------------------------------------------------------------------------------
 
 
@@ -28,6 +28,40 @@ function parseId(request, response) {
     return null;
   }
   return id;
+}
+
+function parseTeamIdentifier(request, response) {
+  const { id } = request.params;
+  if (/^\d+$/.test(id)) {
+    const numericId = Number(id);
+    if (Number.isSafeInteger(numericId) && numericId > 0) {
+      return numericId;
+    }
+  } else if (/^[a-z0-9_-]+$/.test(id)) {
+    return id;
+  }
+
+  response.status(400).json({
+    error: "team identifier must be a positive integer or a valid slug.",
+  });
+  return null;
+}
+
+function parseMatchIdentifier(request, response) {
+  const { id } = request.params;
+  if (/^\d+$/.test(id)) {
+    const numericId = Number(id);
+    if (Number.isSafeInteger(numericId) && numericId > 0) {
+      return numericId;
+    }
+  } else if (/^[a-z0-9_-]+$/.test(id)) {
+    return id;
+  }
+
+  response.status(400).json({
+    error: "match identifier must be a positive integer or a valid slug.",
+  });
+  return null;
 }
 
 // Lê paginação e devolve erro se exceder os limites locais permitidos.
@@ -113,6 +147,23 @@ function listMatches(request, response, state, parentType, parentId, db) {
 export function createCsgoCatalogRouter(options = {}) {
   const router = Router();
   const getDb = options.db ? () => options.db : () => getDatabase();
+
+  router.get("/teams", (request, response) =>
+    listEntity(request, response, "teams", getDb()),
+  );
+  router.get("/teams/:id", (request, response) => {
+    const id = parseTeamIdentifier(request, response);
+    if (id === null) {
+      return;
+    }
+
+    const team = getCsgoEntity("teams", id, getDb());
+    if (!team) {
+      response.status(404).json({ error: "Team not found locally." });
+      return;
+    }
+    response.json(team);
+  });
 
   // Lista as ligas sincronizadas e permite localizar uma liga por ID.
   router.get("/leagues", (request, response) =>
@@ -238,7 +289,7 @@ export function createCsgoCatalogRouter(options = {}) {
     );
   });
   router.get("/matches/:id", (request, response) => {
-    const id = parseId(request, response);
+    const id = parseMatchIdentifier(request, response);
     if (id === null) {
       return;
     }
