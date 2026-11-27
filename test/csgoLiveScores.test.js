@@ -326,6 +326,20 @@ test("maps videogame metadata supplied with a league", () => {
   });
 });
 
+test("preserves competition IDs when nested entities are missing", () => {
+  const mapped = mapCsgoMatch({
+    id: 123,
+    league_id: 10,
+    serie_id: 20,
+    tournament_id: 30,
+  });
+
+  assert.equal(mapped.leagueId, 10);
+  assert.equal(mapped.series.leagueId, 10);
+  assert.equal(mapped.tournament.seriesId, 20);
+  assert.equal(mapped.tournament.leagueId, 10);
+});
+
 // Confirma que uma página cheia faz o sincronizador consultar a página seguinte.
 test("fetches subsequent pages when the previous page is full", async (t) => {
   const db = createDatabase(":memory:");
@@ -633,6 +647,32 @@ test("records sanitized PandaScore errors and removes logs older than 30 days", 
     purgeOldPandaScoreErrorLogs(db, () => future),
     1,
   );
+});
+
+test("redacts the trimmed PandaScore token from error messages", (t) => {
+  const db = createDatabase(":memory:");
+  const previousToken = process.env.PANDASCORE_TOKEN;
+  process.env.PANDASCORE_TOKEN = "  fake-pandascore-secret  ";
+  t.after(() => {
+    db.close();
+    if (previousToken === undefined) {
+      delete process.env.PANDASCORE_TOKEN;
+    } else {
+      process.env.PANDASCORE_TOKEN = previousToken;
+    }
+  });
+
+  recordPandaScoreError(
+    db,
+    new Error("Request failed with fake-pandascore-secret"),
+    { endpoint: "/csgo/matches/running" },
+  );
+
+  const log = db
+    .prepare("SELECT message FROM api_error_logs ORDER BY id DESC")
+    .get();
+  assert.equal(log.message, "Request failed with [REDACTED]");
+  assert.doesNotMatch(log.message, /fake-pandascore-secret/);
 });
 
 // Garante que uma resposta inválida seja registrada e rejeitada pelo sincronizador.

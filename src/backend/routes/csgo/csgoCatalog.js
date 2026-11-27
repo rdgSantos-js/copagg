@@ -30,7 +30,7 @@ function parseId(request, response) {
   return id;
 }
 
-function parseTeamIdentifier(request, response) {
+function parseIdOrSlug(request, response, entityType) {
   const { id } = request.params;
   if (/^\d+$/.test(id)) {
     const numericId = Number(id);
@@ -42,30 +42,13 @@ function parseTeamIdentifier(request, response) {
   }
 
   response.status(400).json({
-    error: "team identifier must be a positive integer or a valid slug.",
+    error: `${entityType} identifier must be a positive integer or a valid slug.`,
   });
   return null;
 }
 
-function parseMatchIdentifier(request, response) {
-  const { id } = request.params;
-  if (/^\d+$/.test(id)) {
-    const numericId = Number(id);
-    if (Number.isSafeInteger(numericId) && numericId > 0) {
-      return numericId;
-    }
-  } else if (/^[a-z0-9_-]+$/.test(id)) {
-    return id;
-  }
-
-  response.status(400).json({
-    error: "match identifier must be a positive integer or a valid slug.",
-  });
-  return null;
-}
-
-// Lê paginação e devolve erro se exceder os limites locais permitidos.
-function getPagination(request, response) {
+// Valida paginação e filtros de data para endpoints de coleção.
+function getListOptions(request, response, resource) {
   const pagination = parseLocalPagination(request.query);
   if (!pagination) {
     response.status(400).json({
@@ -73,18 +56,20 @@ function getPagination(request, response) {
     });
     return null;
   }
-  return pagination;
+
+  const dateOptions = parseLocalDateOptions(request.query, resource);
+  if (dateOptions.error) {
+    response.status(400).json({ error: dateOptions.error });
+    return null;
+  }
+
+  return { ...pagination, ...dateOptions };
 }
 
 // Responde com uma página de entidades persistidas localmente.
 function listEntity(request, response, type, db, options = {}) {
-  const pagination = getPagination(request, response);
-  if (!pagination) {
-    return;
-  }
-  const dateOptions = parseLocalDateOptions(request.query, type);
-  if (dateOptions.error) {
-    response.status(400).json({ error: dateOptions.error });
+  const listOptions = getListOptions(request, response, type);
+  if (!listOptions) {
     return;
   }
 
@@ -93,9 +78,8 @@ function listEntity(request, response, type, db, options = {}) {
   const result = listCsgoEntities(
     type,
     {
-      ...pagination,
+      ...listOptions,
       search,
-      ...dateOptions,
       ...options,
     },
     db,
@@ -120,20 +104,14 @@ function getEntity(request, response, type, db) {
 
 // Lista partidas locais filtradas pelo estado ou pela entidade competitiva.
 function listMatches(request, response, state, parentType, parentId, db) {
-  const pagination = getPagination(request, response);
-  if (!pagination) {
-    return;
-  }
-  const dateOptions = parseLocalDateOptions(request.query, "matches");
-  if (dateOptions.error) {
-    response.status(400).json({ error: dateOptions.error });
+  const listOptions = getListOptions(request, response, "matches");
+  if (!listOptions) {
     return;
   }
   response.json(
     listCsgoMatches(
       {
-        ...pagination,
-        ...dateOptions,
+        ...listOptions,
         state,
         parentType,
         parentId,
@@ -152,7 +130,7 @@ export function createCsgoCatalogRouter(options = {}) {
     listEntity(request, response, "teams", getDb()),
   );
   router.get("/teams/:id", (request, response) => {
-    const id = parseTeamIdentifier(request, response);
+    const id = parseIdOrSlug(request, response, "team");
     if (id === null) {
       return;
     }
@@ -275,21 +253,14 @@ export function createCsgoCatalogRouter(options = {}) {
       response.status(404).json({ error: "Match not found locally." });
       return;
     }
-    const pagination = getPagination(request, response);
-    if (!pagination) {
+    const listOptions = getListOptions(request, response, "games");
+    if (!listOptions) {
       return;
     }
-    const dateOptions = parseLocalDateOptions(request.query, "games");
-    if (dateOptions.error) {
-      response.status(400).json({ error: dateOptions.error });
-      return;
-    }
-    response.json(
-      listCsgoGames(id, { ...pagination, ...dateOptions }, getDb()),
-    );
+    response.json(listCsgoGames(id, listOptions, getDb()));
   });
   router.get("/matches/:id", (request, response) => {
-    const id = parseMatchIdentifier(request, response);
+    const id = parseIdOrSlug(request, response, "match");
     if (id === null) {
       return;
     }

@@ -207,6 +207,7 @@ export function mapCsgoMatch(match) {
   const tournament = mapCsgoTournament(rawTournament, {
     id: rawTournamentId,
     seriesId: series?.id,
+    leagueId: league?.id,
   });
   const rawVideogame = match.videogame;
   const videogame = rawVideogame

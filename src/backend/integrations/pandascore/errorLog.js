@@ -31,7 +31,7 @@ function sanitizeText(value, maxLength = MAX_MESSAGE_LENGTH) {
     .replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]")
     .replace(/([?&]token=)[^&\s]+/gi, "$1[REDACTED]");
 
-  const token = process.env.PANDASCORE_TOKEN;
+  const token = process.env.PANDASCORE_TOKEN?.trim();
   if (token) {
     text = text.split(token).join("[REDACTED]");
   }

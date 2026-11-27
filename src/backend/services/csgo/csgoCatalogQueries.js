@@ -172,6 +172,25 @@ const MATCH_SELECT = `
   LEFT JOIN teams team ON team.id = mt.team_id
 `;
 
+const GAME_SELECT = `
+  SELECT
+    g.id,
+    g.match_id AS matchId,
+    g.position,
+    g.status,
+    g.begin_at AS beginAt,
+    g.end_at AS endAt,
+    g.length,
+    g.winner_id AS winnerId,
+    g.winner_type AS winnerType,
+    gt.team_id AS teamId,
+    t.name AS teamName,
+    gt.score
+  FROM games g
+  LEFT JOIN game_teams gt ON gt.game_id = g.id
+  LEFT JOIN teams t ON t.id = gt.team_id
+`;
+
 function mapEntityRow(type, row) {
   if (type === "tournaments") {
     return {
@@ -616,6 +635,40 @@ function attachMatchStreams(matches, db) {
   return matches;
 }
 
+function mapMatchRows(rows, db) {
+  return attachMatchStreams(groupMatchRows(rows), db);
+}
+
+function getCsgoMatchesByIds(idRows, db, orderBy) {
+  if (idRows.length === 0) {
+    return [];
+  }
+
+  const placeholders = idRows.map(() => "?").join(", ");
+  const rows = db
+    .prepare(
+      `${MATCH_SELECT}
+       WHERE m.id IN (${placeholders})
+       ORDER BY ${orderBy}, team.id`,
+    )
+    .all(...idRows.map((row) => row.id));
+
+  return mapMatchRows(rows, db);
+}
+
+// Reconstrói todas as partidas em andamento sem limitar a paginação da API.
+export function getCsgoRunningMatches(db = getDatabase()) {
+  const rows = db
+    .prepare(`
+      ${MATCH_SELECT}
+      WHERE m.is_running = 1
+      ORDER BY m.begin_at, m.id, team.id
+    `)
+    .all();
+
+  return mapMatchRows(rows, db);
+}
+
 // Lista partidas por estado ou por entidade pai, com paginação por partida.
 export function listCsgoMatches(
   {
@@ -691,21 +744,8 @@ export function listCsgoMatches(
     )
     .get(...values).count;
 
-  if (idRows.length === 0) {
-    return { data: [], pagination: { page, perPage, total } };
-  }
-
-  const placeholders = idRows.map(() => "?").join(", ");
-  const rows = db
-    .prepare(
-      `${MATCH_SELECT}
-       WHERE m.id IN (${placeholders})
-       ORDER BY ${orderBy}, team.id`,
-    )
-    .all(...idRows.map((row) => row.id));
-
   return {
-    data: attachMatchStreams(groupMatchRows(rows), db),
+    data: getCsgoMatchesByIds(idRows, db, orderBy),
     pagination: { page, perPage, total },
   };
 }
@@ -717,6 +757,39 @@ export function getCsgoMatch(id, db = getDatabase()) {
     .prepare(`${MATCH_SELECT} WHERE ${lookupColumn} = ? ORDER BY team.id`)
     .all(id);
   return attachMatchStreams(groupMatchRows(rows), db)[0];
+}
+
+function groupGameRows(rows) {
+  const grouped = new Map();
+
+  for (const row of rows) {
+    let game = grouped.get(row.id);
+    if (!game) {
+      game = {
+        id: row.id,
+        matchId: row.matchId,
+        position: row.position,
+        status: row.status,
+        beginAt: row.beginAt,
+        endAt: row.endAt,
+        length: row.length,
+        winnerId: row.winnerId,
+        winnerType: row.winnerType,
+        teams: [],
+      };
+      grouped.set(row.id, game);
+    }
+
+    if (row.teamId !== null) {
+      game.teams.push({
+        id: row.teamId,
+        name: row.teamName,
+        score: row.score,
+      });
+    }
+  }
+
+  return [...grouped.values()];
 }
 
 // Lista jogos/mapas de uma partida, incluindo os placares das equipes.
@@ -751,99 +824,26 @@ export function listCsgoGames(
   const placeholders = ids.map(() => "?").join(", ");
   const games = db
     .prepare(
-      `SELECT
-         g.id, g.match_id AS matchId, g.position, g.status, g.begin_at AS beginAt,
-         g.end_at AS endAt, g.length, g.winner_id AS winnerId,
-         g.winner_type AS winnerType, gt.team_id AS teamId, t.name AS teamName,
-         gt.score
-       FROM games g
-       LEFT JOIN game_teams gt ON gt.game_id = g.id
-       LEFT JOIN teams t ON t.id = gt.team_id
+      `${GAME_SELECT}
        WHERE g.id IN (${placeholders})
        ORDER BY ${orderBy}, gt.team_id`,
     )
     .all(...ids.map((row) => row.id));
-  const grouped = new Map();
-
-  for (const row of games) {
-    let game = grouped.get(row.id);
-    if (!game) {
-      game = {
-        id: row.id,
-        matchId: row.matchId,
-        position: row.position,
-        status: row.status,
-        beginAt: row.beginAt,
-        endAt: row.endAt,
-        length: row.length,
-        winnerId: row.winnerId,
-        winnerType: row.winnerType,
-        teams: [],
-      };
-      grouped.set(row.id, game);
-    }
-    if (row.teamId !== null) {
-      game.teams.push({
-        id: row.teamId,
-        name: row.teamName,
-        score: row.score,
-      });
-    }
-  }
 
   return {
-    data: [...grouped.values()],
+    data: groupGameRows(games),
     pagination: { page, perPage, total },
   };
 }
 
 // Busca um jogo/mapa local, sem fazer uma chamada direta ao endpoint Historical.
 export function getCsgoGame(id, db = getDatabase()) {
-  const result = listCsgoGamesForId(id, db);
-  return result;
-}
-
-// Monta um jogo e seus placares de equipe a partir das tabelas relacionais.
-function listCsgoGamesForId(id, db) {
   const rows = db
     .prepare(
-      `SELECT
-         g.id, g.match_id AS matchId, g.position, g.status, g.begin_at AS beginAt,
-         g.end_at AS endAt, g.length, g.winner_id AS winnerId,
-         g.winner_type AS winnerType, gt.team_id AS teamId, t.name AS teamName,
-         gt.score
-       FROM games g
-       LEFT JOIN game_teams gt ON gt.game_id = g.id
-       LEFT JOIN teams t ON t.id = gt.team_id
+      `${GAME_SELECT}
        WHERE g.id = ?
        ORDER BY gt.team_id`,
     )
     .all(id);
-
-  if (rows.length === 0) {
-    return undefined;
-  }
-
-  const game = {
-    id: rows[0].id,
-    matchId: rows[0].matchId,
-    position: rows[0].position,
-    status: rows[0].status,
-    beginAt: rows[0].beginAt,
-    endAt: rows[0].endAt,
-    length: rows[0].length,
-    winnerId: rows[0].winnerId,
-    winnerType: rows[0].winnerType,
-    teams: [],
-  };
-  for (const row of rows) {
-    if (row.teamId !== null) {
-      game.teams.push({
-        id: row.teamId,
-        name: row.teamName,
-        score: row.score,
-      });
-    }
-  }
-  return game;
+  return groupGameRows(rows)[0];
 }

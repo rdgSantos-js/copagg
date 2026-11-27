@@ -14,6 +14,19 @@ import { fileURLToPath } from "node:url";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const defaultDatabasePath = resolve(projectRoot, "data", "pandascore.sqlite");
 
+function addMissingColumns(db, tableName, columns) {
+  const existingColumns = new Set(
+    db.pragma(`table_info(${tableName})`).map((column) => column.name),
+  );
+
+  for (const [column, type] of Object.entries(columns)) {
+    if (!existingColumns.has(column)) {
+      db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${column} ${type}`);
+      existingColumns.add(column);
+    }
+  }
+}
+
 // Cria a conexão SQLite, prepara a pasta de dados e garante o esquema necessário.
 export function createDatabase(databasePath = defaultDatabasePath) {
   if (databasePath !== ":memory:") {
@@ -236,45 +249,28 @@ export function createDatabase(databasePath = defaultDatabasePath) {
       ON api_request_logs (requested_at);
   `);
 
-  const videogameColumns = db.pragma("table_info(videogames)");
-  if (!videogameColumns.some((column) => column.name === "pandascore_id")) {
-    db.exec("ALTER TABLE videogames ADD COLUMN pandascore_id INTEGER");
-  }
+  addMissingColumns(db, "videogames", {
+    pandascore_id: "INTEGER",
+  });
   db.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_videogames_pandascore_id
       ON videogames (pandascore_id)
   `);
 
-  const leagueColumns = db.pragma("table_info(leagues)");
-  if (!leagueColumns.some((column) => column.name === "videogame_id")) {
-    db.exec(
-      "ALTER TABLE leagues ADD COLUMN videogame_id INTEGER REFERENCES videogames(id)",
-    );
-  }
-  if (!leagueColumns.some((column) => column.name === "url")) {
-    db.exec("ALTER TABLE leagues ADD COLUMN url TEXT");
-  }
-  if (!leagueColumns.some((column) => column.name === "image_url")) {
-    db.exec("ALTER TABLE leagues ADD COLUMN image_url TEXT");
-  }
-
-  const seriesColumns = db.pragma("table_info(series)");
-  const missingSeriesColumns = {
+  addMissingColumns(db, "leagues", {
+    videogame_id: "INTEGER REFERENCES videogames(id)",
+    url: "TEXT",
+    image_url: "TEXT",
+  });
+  addMissingColumns(db, "series", {
     full_name: "TEXT",
     modified_at: "TEXT",
     season: "TEXT",
     winner_id: "INTEGER",
     winner_type: "TEXT",
     year: "INTEGER",
-  };
-  for (const [column, type] of Object.entries(missingSeriesColumns)) {
-    if (!seriesColumns.some((existing) => existing.name === column)) {
-      db.exec(`ALTER TABLE series ADD COLUMN ${column} ${type}`);
-    }
-  }
-
-  const tournamentColumns = db.pragma("table_info(tournaments)");
-  const missingTournamentColumns = {
+  });
+  addMissingColumns(db, "tournaments", {
     league_id: "INTEGER REFERENCES leagues(id)",
     type: "TEXT",
     country: "TEXT",
@@ -286,27 +282,13 @@ export function createDatabase(databasePath = defaultDatabasePath) {
     prizepool: "TEXT",
     has_bracket: "INTEGER",
     live_supported: "INTEGER",
-  };
-  for (const [column, type] of Object.entries(missingTournamentColumns)) {
-    if (!tournamentColumns.some((existing) => existing.name === column)) {
-      db.exec(`ALTER TABLE tournaments ADD COLUMN ${column} ${type}`);
-    }
-  }
-
-  const teamColumns = db.pragma("table_info(teams)");
-  const missingTeamColumns = {
+  });
+  addMissingColumns(db, "teams", {
     dark_mode_image_url: "TEXT",
     location: "TEXT",
     modified_at: "TEXT",
-  };
-  for (const [column, type] of Object.entries(missingTeamColumns)) {
-    if (!teamColumns.some((existing) => existing.name === column)) {
-      db.exec(`ALTER TABLE teams ADD COLUMN ${column} ${type}`);
-    }
-  }
-
-  const matchColumns = db.pragma("table_info(matches)");
-  const missingMatchColumns = {
+  });
+  addMissingColumns(db, "matches", {
     league_id: "INTEGER REFERENCES leagues(id)",
     series_id: "INTEGER REFERENCES series(id)",
     videogame_id: "INTEGER REFERENCES videogames(id)",
@@ -329,18 +311,12 @@ export function createDatabase(databasePath = defaultDatabasePath) {
     videogame_version_name: "TEXT",
     winner_id: "INTEGER",
     winner_type: "TEXT",
-  };
-  for (const [column, type] of Object.entries(missingMatchColumns)) {
-    if (!matchColumns.some((existing) => existing.name === column)) {
-      db.exec(`ALTER TABLE matches ADD COLUMN ${column} ${type}`);
-    }
-  }
+  });
   db.exec("CREATE INDEX IF NOT EXISTS idx_matches_slug ON matches (slug)");
 
-  const matchTeamColumns = db.pragma("table_info(match_teams)");
-  if (!matchTeamColumns.some((column) => column.name === "opponent_type")) {
-    db.exec("ALTER TABLE match_teams ADD COLUMN opponent_type TEXT");
-  }
+  addMissingColumns(db, "match_teams", {
+    opponent_type: "TEXT",
+  });
 
   db.transaction(() => {
     db.prepare(`

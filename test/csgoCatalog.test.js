@@ -444,13 +444,20 @@ test("syncs only the last 30 days of past matches", async (t) => {
   const db = createDatabase(":memory:");
   t.after(() => db.close());
   const now = new Date("2026-12-01T00:00:00.000Z");
-  const recentMatches = Array.from({ length: 100 }, (_, index) => ({
+  const recentMatches = Array.from({ length: 99 }, (_, index) => ({
     id: 700 + index,
     status: "finished",
     begin_at: "2026-11-20T00:00:00.000Z",
     end_at: "2026-11-20T01:00:00.000Z",
     opponents: [],
   }));
+  recentMatches.push({
+    id: 799,
+    status: "finished",
+    begin_at: "2026-11-01T01:00:00+02:00",
+    end_at: "2026-11-01T02:00:00+02:00",
+    opponents: [],
+  });
   const oldMatches = Array.from({ length: 100 }, (_, index) => ({
     id: 800 + index,
     status: "finished",
@@ -475,7 +482,7 @@ test("syncs only the last 30 days of past matches", async (t) => {
   });
   assert.equal(
     db.prepare("SELECT COUNT(*) AS count FROM matches").get().count,
-    100,
+    99,
   );
   assert.equal(
     db.prepare("SELECT last_success_at FROM sync_metadata WHERE sync_key = ?")

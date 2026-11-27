@@ -35,9 +35,15 @@ const server = app.listen(port, () => {
 });
 
 const stopScheduler = startCsgoScoreScheduler({ db });
+let shuttingDown = false;
 
 // Para o agendador e fecha o servidor e o banco durante o encerramento.
 function shutdown() {
+  if (shuttingDown) {
+    return;
+  }
+  shuttingDown = true;
+
   stopScheduler();
   server.close((error) => {
     if (error) {
