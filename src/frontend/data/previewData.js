@@ -73,7 +73,7 @@ export const columnMatches = [
     status: "ENCERRADA",
     statusType: "complete",
     date: "Ontem",
-    time: "Encerrada",
+    time: "21:45",
     teams: [
       { name: "Astralis", abbreviation: "AST", score: 2 },
       { name: "BIG", abbreviation: "BIG", score: 1 },
@@ -95,7 +95,7 @@ export const columnMatches = [
     status: "ENCERRADA",
     statusType: "complete",
     date: "Ontem",
-    time: "Encerrada",
+    time: "18:30",
     teams: [
       { name: "ENCE", abbreviation: "ENCE", score: 0 },
       { name: "Virtus.pro", abbreviation: "VP", score: 2 },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import BrandMark from "./components/BrandMark.jsx";
 import Icon from "./components/Icon.jsx";
+import HorizontalMatchList from "./components/HorizontalMatchList.jsx";
 import MatchCard from "./components/MatchCard.jsx";
 import MatchColumn from "./components/MatchColumn.jsx";
 import SectionHeading from "./components/SectionHeading.jsx";
@@ -246,6 +247,15 @@ function App() {
               description="Oito partidas demonstrativas em uma única coluna."
             />
             <MatchColumn matches={columnMatches} />
+          </section>
+
+          <section className="content-section">
+            <SectionHeading
+              eyebrow="05 — LISTA HORIZONTAL"
+              title="Placar em linha"
+              description="Status, times, placar e contexto em cada linha da lista."
+            />
+            <HorizontalMatchList matches={columnMatches} />
           </section>
 
           <footer className="page-footer">
