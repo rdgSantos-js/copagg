@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------------------------
-// Sincroniza catálogos públicos de ligas, séries e torneios da PandaScore para o SQLite.
+// Sincroniza os videogames e catálogos de competição da PandaScore para o SQLite.
 // ------------------------------------------------------------------------------------------
 
 
@@ -10,12 +10,18 @@ import {
   mapCsgoLeague,
   mapCsgoSeries,
   mapCsgoTournament,
+  mapPandaScoreVideogame,
 } from "./csgoScoreMapper.js";
 import { recordPandaScoreError } from "../integrations/pandascore/errorLog.js";
 import { PANDASCORE_ENDPOINTS } from "../integrations/pandascore/endpoints.js";
 
 const PAGE_SIZE = 100;
 const CATALOGS = [
+  {
+    key: "videogames",
+    endpoint: PANDASCORE_ENDPOINTS.videogames,
+    type: "videogame",
+  },
   {
     key: "csgo_leagues",
     endpoint: PANDASCORE_ENDPOINTS.csgo.leagues,
@@ -36,12 +42,24 @@ const CATALOGS = [
 // Upserts preservam metadados conhecidos quando respostas parciais trazem campos nulos.
 function createUpserts(db) {
   return {
+    videogame: db.prepare(`
+      INSERT INTO videogames (pandascore_id, name, slug)
+      VALUES (@pandascoreId, @name, @slug)
+      ON CONFLICT(slug) DO UPDATE SET
+        pandascore_id = COALESCE(
+          excluded.pandascore_id,
+          videogames.pandascore_id
+        ),
+        name = COALESCE(excluded.name, videogames.name)
+    `),
+    getVideogame: db.prepare("SELECT id FROM videogames WHERE slug = ?"),
     league: db.prepare(`
-      INSERT INTO leagues (id, name, slug)
-      VALUES (@id, @name, @slug)
+      INSERT INTO leagues (id, name, slug, videogame_id)
+      VALUES (@id, @name, @slug, @videogameId)
       ON CONFLICT(id) DO UPDATE SET
         name = COALESCE(excluded.name, leagues.name),
-        slug = COALESCE(excluded.slug, leagues.slug)
+        slug = COALESCE(excluded.slug, leagues.slug),
+        videogame_id = COALESCE(excluded.videogame_id, leagues.videogame_id)
     `),
     series: db.prepare(`
       INSERT INTO series (id, league_id, name, slug, begin_at, end_at)
@@ -69,19 +87,43 @@ function createUpserts(db) {
   };
 }
 
+function persistLeague(league, upserts) {
+  upserts.videogame.run({
+    ...league.videogame,
+    pandascoreId: null,
+  });
+  const videogame = upserts.getVideogame.get(league.videogame.slug);
+  if (!videogame) {
+    throw new Error("Could not resolve the persisted videogame.");
+  }
+
+  upserts.league.run({
+    id: league.id,
+    name: league.name,
+    slug: league.slug,
+    videogameId: videogame.id,
+  });
+}
+
 // Persiste uma entidade e seus pais antes de inserir suas chaves estrangeiras.
 function persistCatalogRecord(record, type, upserts) {
+  if (type === "videogame") {
+    const videogame = mapPandaScoreVideogame(record);
+    if (!videogame) {
+      throw new TypeError("PandaScore returned an invalid videogame.");
+    }
+
+    upserts.videogame.run(videogame);
+    return;
+  }
+
   if (type === "league") {
     const league = mapCsgoLeague(record);
     if (!league) {
       throw new TypeError("PandaScore returned a league without a valid id.");
     }
 
-    upserts.league.run({
-      id: league.id,
-      name: league.name,
-      slug: league.slug,
-    });
+    persistLeague(league, upserts);
 
     for (const rawSeries of Array.isArray(record.series) ? record.series : []) {
       const series = mapCsgoSeries(rawSeries, { leagueId: league.id });
@@ -97,11 +139,7 @@ function persistCatalogRecord(record, type, upserts) {
       rawLeague ?? (Number.isInteger(leagueId) ? { id: leagueId } : null),
     );
     if (league) {
-      upserts.league.run({
-        id: league.id,
-        name: league.name,
-        slug: league.slug,
-      });
+      persistLeague(league, upserts);
     }
 
     const series = mapCsgoSeries(record, { leagueId });
@@ -119,11 +157,7 @@ function persistCatalogRecord(record, type, upserts) {
     rawLeague ?? (Number.isInteger(leagueId) ? { id: leagueId } : null),
   );
   if (league) {
-    upserts.league.run({
-      id: league.id,
-      name: league.name,
-      slug: league.slug,
-    });
+    persistLeague(league, upserts);
   }
 
   if (Number.isInteger(seriesId)) {

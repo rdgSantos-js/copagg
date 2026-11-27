@@ -9,8 +9,10 @@ import { getDatabase } from "../db/database.js";
 
 const ENTITY_QUERIES = {
   leagues: {
-    from: "leagues l",
-    select: "l.id, l.name, l.slug",
+    from:
+      "leagues l LEFT JOIN videogames vg ON vg.id = l.videogame_id",
+    select:
+      "l.id, l.name, l.slug, vg.id AS videogameId, vg.name AS videogameName, vg.slug AS videogameSlug",
     orderBy: "l.name, l.id",
     search: "(l.name LIKE ? OR l.slug LIKE ?)",
     idColumn: "l.id",
@@ -40,6 +42,29 @@ const ENTITY_QUERIES = {
   },
 };
 
+const ENTITY_DATE_COLUMNS = {
+  leagues: {},
+  series: {
+    begin_at: "s.begin_at",
+    end_at: "s.end_at",
+  },
+  tournaments: {
+    begin_at: "t.begin_at",
+    end_at: "t.end_at",
+  },
+};
+
+const MATCH_DATE_COLUMNS = {
+  begin_at: "m.begin_at",
+  expected_begin_at: "m.expected_begin_at",
+  end_at: "m.end_at",
+};
+
+const GAME_DATE_COLUMNS = {
+  begin_at: "g.begin_at",
+  end_at: "g.end_at",
+};
+
 const MATCH_SELECT = `
   SELECT
     m.id AS matchId,
@@ -58,6 +83,9 @@ const MATCH_SELECT = `
     l.id AS leagueId,
     l.name AS leagueName,
     l.slug AS leagueSlug,
+    vg.id AS videogameId,
+    vg.name AS videogameName,
+    vg.slug AS videogameSlug,
     team.id AS teamId,
     team.name AS teamName,
     team.slug AS teamSlug,
@@ -68,9 +96,29 @@ const MATCH_SELECT = `
   LEFT JOIN tournaments t ON t.id = m.tournament_id
   LEFT JOIN series s ON s.id = t.series_id
   LEFT JOIN leagues l ON l.id = s.league_id
+  LEFT JOIN videogames vg ON vg.id = l.videogame_id
   LEFT JOIN match_teams mt ON mt.match_id = m.id
   LEFT JOIN teams team ON team.id = mt.team_id
 `;
+
+function mapEntityRow(type, row) {
+  if (type !== "leagues") {
+    return row;
+  }
+
+  const {
+    videogameId,
+    videogameName,
+    videogameSlug,
+    ...league
+  } = row;
+  return {
+    ...league,
+    videogame: videogameId
+      ? { id: videogameId, name: videogameName, slug: videogameSlug }
+      : null,
+  };
+}
 
 // Valida a paginação local, mantendo os limites da documentação PandaScore.
 export function parseLocalPagination(query) {
@@ -93,6 +141,95 @@ export function parseLocalPagination(query) {
   return { page, perPage, offset: (page - 1) * perPage };
 }
 
+// Valida filtros de intervalo e ordenação para campos de data-hora permitidos.
+export function parseLocalDateOptions(query, resource) {
+  const dateColumns = {
+    ...ENTITY_DATE_COLUMNS,
+    matches: MATCH_DATE_COLUMNS,
+    games: GAME_DATE_COLUMNS,
+  }[resource];
+  if (!dateColumns) {
+    throw new TypeError("Unsupported date-query resource.");
+  }
+
+  const dateRanges = {};
+  for (const key of Object.keys(query)) {
+    if (!key.startsWith("range[")) {
+      continue;
+    }
+
+    const match = /^range\[([a-z_]+)\]$/.exec(key);
+    if (!match || !Object.hasOwn(dateColumns, match[1])) {
+      return { error: "Unsupported date range field." };
+    }
+    const value = query[key];
+    if (typeof value !== "string") {
+      return { error: "Each date range must contain two ISO 8601 timestamps." };
+    }
+
+    const bounds = value.split(",");
+    if (
+      bounds.length !== 2 ||
+      bounds.some((bound) => !isIsoTimestamp(bound)) ||
+      Date.parse(bounds[0]) > Date.parse(bounds[1])
+    ) {
+      return {
+        error:
+          "Each date range must contain valid, ordered ISO 8601 timestamps.",
+      };
+    }
+
+    dateRanges[match[1]] = { from: bounds[0], to: bounds[1] };
+  }
+
+  let sort;
+  if (query.sort !== undefined) {
+    if (typeof query.sort !== "string") {
+      return { error: "sort must name one supported date-time field." };
+    }
+    const match = /^(-?)([a-z_]+)$/.exec(query.sort);
+    if (!match || !Object.hasOwn(dateColumns, match[2])) {
+      return { error: "sort must name one supported date-time field." };
+    }
+    sort = {
+      field: match[2],
+      direction: match[1] ? "DESC" : "ASC",
+    };
+  }
+
+  return { dateRanges, sort };
+}
+
+function isIsoTimestamp(value) {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(
+      value,
+    )
+  ) {
+    return false;
+  }
+
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+  return (
+    Number.isFinite(Date.parse(value)) &&
+    calendarDate.getUTCFullYear() === year &&
+    calendarDate.getUTCMonth() === month - 1 &&
+    calendarDate.getUTCDate() === day
+  );
+}
+
+function appendDateConditions(conditions, values, dateRanges, columns) {
+  for (const [field, { from, to }] of Object.entries(dateRanges)) {
+    const column = columns[field];
+    conditions.push(
+      `julianday(${column}) >= julianday(?) AND julianday(${column}) <= julianday(?)`,
+    );
+    values.push(from, to);
+  }
+}
+
 // Lista uma entidade do catálogo com pesquisa e paginação local.
 export function listCsgoEntities(
   type,
@@ -103,6 +240,8 @@ export function listCsgoEntities(
     search = "",
     upcomingOnly = false,
     parentId,
+    dateRanges = {},
+    sort,
   },
   db = getDatabase(),
 ) {
@@ -131,17 +270,27 @@ export function listCsgoEntities(
     conditions.push(`${config.parentColumn} = ?`);
     values.push(parentId);
   }
+  appendDateConditions(
+    conditions,
+    values,
+    dateRanges,
+    ENTITY_DATE_COLUMNS[type],
+  );
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const orderBy = sort
+    ? `julianday(${ENTITY_DATE_COLUMNS[type][sort.field]}) ${sort.direction}, ${config.idColumn}`
+    : config.orderBy;
   const rows = db
     .prepare(
       `SELECT ${config.select}
        FROM ${config.from}
        ${where}
-       ORDER BY ${config.orderBy}
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
     )
-    .all(...values, perPage, offset);
+    .all(...values, perPage, offset)
+    .map((row) => mapEntityRow(type, row));
   const total = db
     .prepare(
       `SELECT COUNT(*) AS count
@@ -163,13 +312,14 @@ export function getCsgoEntity(type, id, db = getDatabase()) {
     throw new TypeError("Unsupported Counter-Strike catalog entity.");
   }
 
-  return db
+  const row = db
     .prepare(
       `SELECT ${config.select}
        FROM ${config.from}
        WHERE ${config.idColumn} = ?`,
     )
     .get(id);
+  return row ? mapEntityRow(type, row) : row;
 }
 
 // Monta partidas e equipes a partir das relações normalizadas do banco.
@@ -192,6 +342,13 @@ function groupMatchRows(rows) {
               id: row.leagueId,
               name: row.leagueName,
               slug: row.leagueSlug,
+              videogame: row.videogameId
+                ? {
+                    id: row.videogameId,
+                    name: row.videogameName,
+                    slug: row.videogameSlug,
+                  }
+                : null,
             }
           : null,
         series: row.seriesId
@@ -238,6 +395,8 @@ export function listCsgoMatches(
     offset,
     parentType,
     parentId,
+    dateRanges = {},
+    sort,
     now = new Date(),
   },
   db = getDatabase(),
@@ -273,8 +432,12 @@ export function listCsgoMatches(
     conditions.push(`${parentColumn} = ?`);
     values.push(parentId);
   }
+  appendDateConditions(conditions, values, dateRanges, MATCH_DATE_COLUMNS);
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const orderBy = sort
+    ? `julianday(${MATCH_DATE_COLUMNS[sort.field]}) ${sort.direction}, m.id`
+    : "m.begin_at DESC, m.id";
   const idRows = db
     .prepare(
       `SELECT DISTINCT m.id
@@ -283,7 +446,7 @@ export function listCsgoMatches(
        LEFT JOIN series s ON s.id = t.series_id
        LEFT JOIN leagues l ON l.id = s.league_id
        ${where}
-       ORDER BY m.begin_at DESC, m.id
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
     )
     .all(...values, perPage, offset);
@@ -307,7 +470,7 @@ export function listCsgoMatches(
     .prepare(
       `${MATCH_SELECT}
        WHERE m.id IN (${placeholders})
-       ORDER BY m.begin_at DESC, m.id, team.id`,
+       ORDER BY ${orderBy}, team.id`,
     )
     .all(...idRows.map((row) => row.id));
 
@@ -328,21 +491,28 @@ export function getCsgoMatch(id, db = getDatabase()) {
 // Lista jogos/mapas de uma partida, incluindo os placares das equipes.
 export function listCsgoGames(
   matchId,
-  { page, perPage, offset },
+  { page, perPage, offset, dateRanges = {}, sort },
   db = getDatabase(),
 ) {
+  const conditions = ["g.match_id = ?"];
+  const values = [matchId];
+  appendDateConditions(conditions, values, dateRanges, GAME_DATE_COLUMNS);
+  const where = conditions.join(" AND ");
+  const orderBy = sort
+    ? `julianday(${GAME_DATE_COLUMNS[sort.field]}) ${sort.direction}, g.id`
+    : "g.position, g.id";
   const ids = db
     .prepare(
       `SELECT id
-       FROM games
-       WHERE match_id = ?
-       ORDER BY position, id
+       FROM games g
+       WHERE ${where}
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
     )
-    .all(matchId, perPage, offset);
+    .all(...values, perPage, offset);
   const total = db
-    .prepare("SELECT COUNT(*) AS count FROM games WHERE match_id = ?")
-    .get(matchId).count;
+    .prepare(`SELECT COUNT(*) AS count FROM games g WHERE ${where}`)
+    .get(...values).count;
   if (ids.length === 0) {
     return { data: [], pagination: { page, perPage, total } };
   }
@@ -359,7 +529,7 @@ export function listCsgoGames(
        LEFT JOIN game_teams gt ON gt.game_id = g.id
        LEFT JOIN teams t ON t.id = gt.team_id
        WHERE g.id IN (${placeholders})
-       ORDER BY g.position, g.id, gt.team_id`,
+       ORDER BY ${orderBy}, gt.team_id`,
     )
     .all(...ids.map((row) => row.id));
   const grouped = new Map();

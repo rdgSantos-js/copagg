@@ -46,10 +46,18 @@ export function createDatabase(databasePath = defaultDatabasePath) {
   }
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS videogames (
+      id INTEGER PRIMARY KEY,
+      pandascore_id INTEGER,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE
+    );
+
     CREATE TABLE IF NOT EXISTS leagues (
       id INTEGER PRIMARY KEY,
       name TEXT,
-      slug TEXT
+      slug TEXT,
+      videogame_id INTEGER REFERENCES videogames(id)
     );
 
     CREATE TABLE IF NOT EXISTS series (
@@ -171,6 +179,41 @@ export function createDatabase(databasePath = defaultDatabasePath) {
     CREATE INDEX IF NOT EXISTS idx_api_request_logs_requested_at
       ON api_request_logs (requested_at);
   `);
+
+  const videogameColumns = db.pragma("table_info(videogames)");
+  if (!videogameColumns.some((column) => column.name === "pandascore_id")) {
+    db.exec("ALTER TABLE videogames ADD COLUMN pandascore_id INTEGER");
+  }
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_videogames_pandascore_id
+      ON videogames (pandascore_id)
+  `);
+
+  const leagueColumns = db.pragma("table_info(leagues)");
+  if (!leagueColumns.some((column) => column.name === "videogame_id")) {
+    db.exec(
+      "ALTER TABLE leagues ADD COLUMN videogame_id INTEGER REFERENCES videogames(id)",
+    );
+  }
+
+  db.transaction(() => {
+    db.prepare(`
+      INSERT INTO videogames (name, slug)
+      VALUES ('Counter-Strike', 'cs-go')
+      ON CONFLICT(slug) DO NOTHING
+    `).run();
+    db.prepare(`
+      UPDATE leagues
+      SET videogame_id = (
+        SELECT id FROM videogames WHERE slug = 'cs-go'
+      )
+      WHERE videogame_id IS NULL
+        OR videogame_id = (
+          SELECT id FROM videogames WHERE slug = 'csgo'
+        )
+    `).run();
+    db.prepare("DELETE FROM videogames WHERE slug = 'csgo'").run();
+  })();
 
   return db;
 }

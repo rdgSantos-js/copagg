@@ -132,12 +132,24 @@ export async function syncCsgoMatches({
   const deactivateMatches = db.prepare(
     "UPDATE matches SET is_running = 0",
   );
+  const upsertVideogame = db.prepare(`
+    INSERT INTO videogames (pandascore_id, name, slug)
+    VALUES (@pandascoreId, @name, @slug)
+    ON CONFLICT(slug) DO UPDATE SET
+      pandascore_id = COALESCE(
+        excluded.pandascore_id,
+        videogames.pandascore_id
+      ),
+      name = COALESCE(excluded.name, videogames.name)
+  `);
+  const getVideogame = db.prepare("SELECT id FROM videogames WHERE slug = ?");
   const upsertLeague = db.prepare(`
-    INSERT INTO leagues (id, name, slug)
-    VALUES (@id, @name, @slug)
+    INSERT INTO leagues (id, name, slug, videogame_id)
+    VALUES (@id, @name, @slug, @videogameId)
     ON CONFLICT(id) DO UPDATE SET
       name = COALESCE(excluded.name, leagues.name),
-      slug = COALESCE(excluded.slug, leagues.slug)
+      slug = COALESCE(excluded.slug, leagues.slug),
+      videogame_id = COALESCE(excluded.videogame_id, leagues.videogame_id)
   `);
   const upsertSeries = db.prepare(`
     INSERT INTO series (id, league_id, name, slug, begin_at, end_at)
@@ -240,7 +252,18 @@ export async function syncCsgoMatches({
 
     for (const match of records) {
       if (match.league) {
-        upsertLeague.run(match.league);
+        upsertVideogame.run({
+          ...match.league.videogame,
+          pandascoreId: null,
+        });
+        const videogame = getVideogame.get(match.league.videogame.slug);
+        if (!videogame) {
+          throw new Error("Could not resolve the persisted videogame.");
+        }
+        upsertLeague.run({
+          ...match.league,
+          videogameId: videogame.id,
+        });
       }
 
       if (match.series) {

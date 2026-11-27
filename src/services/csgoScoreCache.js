@@ -37,6 +37,9 @@ export function hydrateCsgoScoreCache(db = getDatabase()) {
          l.id AS league_id,
          l.name AS league_name,
          l.slug AS league_slug,
+         vg.id AS videogame_id,
+         vg.name AS videogame_name,
+         vg.slug AS videogame_slug,
          team.id AS team_id,
          team.name AS team_name,
          team.slug AS team_slug,
@@ -47,6 +50,7 @@ export function hydrateCsgoScoreCache(db = getDatabase()) {
        LEFT JOIN tournaments t ON t.id = m.tournament_id
        LEFT JOIN series s ON s.id = t.series_id
        LEFT JOIN leagues l ON l.id = s.league_id
+       LEFT JOIN videogames vg ON vg.id = l.videogame_id
        LEFT JOIN match_teams mt ON mt.match_id = m.id
        LEFT JOIN teams team ON team.id = mt.team_id
        WHERE m.is_running = 1
@@ -76,6 +80,13 @@ export function hydrateCsgoScoreCache(db = getDatabase()) {
               id: row.league_id,
               name: row.league_name,
               slug: row.league_slug,
+              videogame: row.videogame_id
+                ? {
+                    id: row.videogame_id,
+                    name: row.videogame_name,
+                    slug: row.videogame_slug,
+                  }
+                : null,
             }
           : null,
         series: row.series_id

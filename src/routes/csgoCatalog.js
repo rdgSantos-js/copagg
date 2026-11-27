@@ -14,6 +14,7 @@ import {
   listCsgoEntities,
   listCsgoGames,
   listCsgoMatches,
+  parseLocalDateOptions,
   parseLocalPagination,
 } from "../services/csgoCatalogQueries.js";
 
@@ -47,6 +48,11 @@ function listEntity(request, response, type, db, options = {}) {
   if (!pagination) {
     return;
   }
+  const dateOptions = parseLocalDateOptions(request.query, type);
+  if (dateOptions.error) {
+    response.status(400).json({ error: dateOptions.error });
+    return;
+  }
 
   const search =
     typeof request.query.search === "string" ? request.query.search : "";
@@ -55,6 +61,7 @@ function listEntity(request, response, type, db, options = {}) {
     {
       ...pagination,
       search,
+      ...dateOptions,
       ...options,
     },
     db,
@@ -83,10 +90,16 @@ function listMatches(request, response, state, parentType, parentId, db) {
   if (!pagination) {
     return;
   }
+  const dateOptions = parseLocalDateOptions(request.query, "matches");
+  if (dateOptions.error) {
+    response.status(400).json({ error: dateOptions.error });
+    return;
+  }
   response.json(
     listCsgoMatches(
       {
         ...pagination,
+        ...dateOptions,
         state,
         parentType,
         parentId,
@@ -215,7 +228,14 @@ export function createCsgoCatalogRouter(options = {}) {
     if (!pagination) {
       return;
     }
-    response.json(listCsgoGames(id, pagination, getDb()));
+    const dateOptions = parseLocalDateOptions(request.query, "games");
+    if (dateOptions.error) {
+      response.status(400).json({ error: dateOptions.error });
+      return;
+    }
+    response.json(
+      listCsgoGames(id, { ...pagination, ...dateOptions }, getDb()),
+    );
   });
   router.get("/matches/:id", (request, response) => {
     const id = parseId(request, response);

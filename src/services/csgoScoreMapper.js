@@ -49,7 +49,46 @@ function mapGame(game) {
 
 // Normaliza uma liga recebida do endpoint de leagues.
 export function mapCsgoLeague(league) {
-  return mapCompetitionEntity(league);
+  const mappedLeague = mapCompetitionEntity(league);
+  if (!mappedLeague) {
+    return null;
+  }
+
+  const videogame = league.videogame;
+  const videogameSlug =
+    typeof videogame?.slug === "string" && videogame.slug
+      ? videogame.slug
+      : "cs-go";
+
+  return {
+    ...mappedLeague,
+    videogame: {
+      name:
+        videogame?.name ??
+        (videogameSlug === "cs-go" ? "Counter-Strike" : videogameSlug),
+      slug: videogameSlug,
+    },
+  };
+}
+
+// Valida e normaliza um videogame recebido do catálogo público da PandaScore.
+export function mapPandaScoreVideogame(videogame) {
+  if (
+    !videogame ||
+    !Number.isInteger(videogame.id) ||
+    typeof videogame.name !== "string" ||
+    !videogame.name ||
+    typeof videogame.slug !== "string" ||
+    !videogame.slug
+  ) {
+    return null;
+  }
+
+  return {
+    pandascoreId: videogame.id,
+    name: videogame.name,
+    slug: videogame.slug,
+  };
 }
 
 // Normaliza uma série e mantém sua referência à liga correspondente.

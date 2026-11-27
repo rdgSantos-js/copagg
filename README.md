@@ -1,6 +1,6 @@
 # Copa.gg
 
-API somente de leitura para Counter-Strike. O serviço sincroniza os dados da
+Estágio de desenvolvimento: API somente de leitura para Counter-Strike. O serviço sincroniza os dados da
 PandaScore com o SQLite e atende às rotas locais sem fazer uma chamada à API externa
 a cada solicitação do usuário.
 
@@ -10,7 +10,9 @@ Os dados das competições são armazenados de forma relacional, seguindo a hier
 da PandaScore: `leagues -> series -> tournaments -> matches -> games`. As equipes e
 seus placares ficam nas tabelas `teams`, `match_teams` e `game_teams`. No Counter-Strike,
 cada registro em `games` representa um mapa da partida. A tabela antiga
-`csgo_live_matches` não é mais usada.
+`csgo_live_matches` não é mais usada. A tabela `leagues` referencia `videogames`,
+que identifica o e-sport de cada liga; os registros existentes são associados a
+Counter-Strike durante a migração do banco.
 
 ## Configuração
 
@@ -34,7 +36,8 @@ O servidor carrega o cache de placares do SQLite e, em seguida, sincroniza:
 - Partidas em andamento a cada 30 segundos.
 - Próximas partidas a cada 5 minutos.
 - Partidas passadas dos últimos 30 dias a cada hora.
-- Ligas, séries e próximos torneios a cada 24 horas.
+- Videogames, ligas, séries e próximos torneios a cada 24 horas. O catálogo de
+  videogames é sincronizado pelo endpoint público `/videogames` da PandaScore.
 
 O banco SQLite fica no diretório `data/`, que é ignorado pelo Git. Falhas de
 sincronização são registradas e não substituem os dados da última sincronização
@@ -89,6 +92,20 @@ As rotas de coleção aceitam `page` (ou `page[number]`) e `per_page` (ou
 torneios também aceitam o parâmetro `search`, que pesquisa por nome ou slug. As
 respostas das listas incluem `data` e `pagination`. As partidas passadas ficam
 limitadas aos últimos 30 dias.
+
+Rotas de séries, torneios, partidas, jogos/mapas e placares ao vivo aceitam
+intervalos inclusivos para os campos de data-hora disponíveis em cada entidade.
+Use timestamps ISO 8601 com fuso horário e informe os limites inicial e final:
+
+```text
+GET /api/csgo/matches?range[begin_at]=2026-11-27T00:00:00Z,2026-11-30T23:59:59Z
+```
+
+Também é possível ordenar por um campo de data-hora com `sort=campo` (crescente)
+ou `sort=-campo` (decrescente). Por exemplo, `sort=-begin_at` mostra primeiro as
+partidas mais recentes. Séries e torneios aceitam `begin_at` e `end_at`; partidas
+aceitam `begin_at`, `expected_begin_at` e `end_at`; jogos/mapas aceitam `begin_at`
+e `end_at`. Esses parâmetros podem ser combinados com paginação e filtros de estado.
 
 ## Registros de erros
 

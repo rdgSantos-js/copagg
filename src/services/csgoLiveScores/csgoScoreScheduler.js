@@ -52,7 +52,7 @@ export function startCsgoScoreScheduler({
       run: () => syncCsgoMatches({ client, db, state: "past" }),
     },
     {
-      name: "league, series, and tournament catalogs",
+      name: "videogame, league, series, and tournament catalogs",
       initialDelayMs: 15_000,
       intervalMs: catalogIntervalMs,
       run: () => syncCsgoCatalog({ client, db }),

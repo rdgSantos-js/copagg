@@ -79,6 +79,10 @@ test("maps team scores, including a zero score", () => {
       slug: "premier-league",
       beginAt: null,
       endAt: null,
+      videogame: {
+        name: "Counter-Strike",
+        slug: "cs-go",
+      },
     },
     series: {
       id: 20,
@@ -131,6 +135,21 @@ test("maps team scores, including a zero score", () => {
         ],
       },
     ],
+  });
+});
+
+test("maps videogame metadata supplied with a league", () => {
+  const mapped = mapCsgoMatch({
+    ...sampleMatch,
+    league: {
+      ...sampleMatch.league,
+      videogame: { name: "Dota 2", slug: "dota-2" },
+    },
+  });
+
+  assert.deepEqual(mapped.league.videogame, {
+    name: "Dota 2",
+    slug: "dota-2",
   });
 });
 
@@ -190,6 +209,15 @@ test("persists scores, serves the cache, and preserves it on sync failure", asyn
     10,
   );
   assert.equal(
+    db.prepare(`
+      SELECT v.slug
+      FROM leagues l
+      JOIN videogames v ON v.id = l.videogame_id
+      WHERE l.id = 10
+    `).get().slug,
+    "cs-go",
+  );
+  assert.equal(
     db
       .prepare("SELECT series_id FROM tournaments WHERE id = ?")
       .get(30).series_id,
@@ -224,9 +252,31 @@ test("persists scores, serves the cache, and preserves it on sync failure", asyn
     assert.equal(body.updatedAt, updatedAt.toISOString());
     assert.equal(body.matches[0].matchId, 123);
     assert.equal(body.matches[0].league.id, 10);
+    assert.equal(body.matches[0].league.videogame.slug, "cs-go");
     assert.equal(body.matches[0].series.id, 20);
     assert.equal(body.matches[0].tournament.id, 30);
     assert.equal(calls.length, 1);
+
+    const filteredUrl = new URL(
+      `http://127.0.0.1:${address.port}/api/csgo/live-scores`,
+    );
+    filteredUrl.searchParams.set(
+      "range[begin_at]",
+      `${sampleMatch.begin_at},${sampleMatch.begin_at}`,
+    );
+    filteredUrl.searchParams.set("sort", "-begin_at");
+    const filteredResponse = await fetch(filteredUrl);
+    const filteredBody = await filteredResponse.json();
+    assert.equal(filteredResponse.status, 200);
+    assert.deepEqual(
+      filteredBody.matches.map(({ matchId }) => matchId),
+      [123],
+    );
+
+    const invalidSort = await fetch(
+      `http://127.0.0.1:${address.port}/api/csgo/live-scores?sort=status`,
+    );
+    assert.equal(invalidSort.status, 400);
   } finally {
     server.close();
     await once(server, "close");
