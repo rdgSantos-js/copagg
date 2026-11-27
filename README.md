@@ -1,108 +1,125 @@
-# PandaScore Live Scores
+# Copa.gg
 
-Read-only Counter-Strike API. The service synchronizes PandaScore data to SQLite and serves local routes without making an upstream request for each user request.
+API somente de leitura para Counter-Strike. O serviço sincroniza os dados da
+PandaScore com o SQLite e atende às rotas locais sem fazer uma chamada à API externa
+a cada solicitação do usuário.
 
-## Database model
+## Modelo do banco de dados
 
-Competition data is stored relationally using the PandaScore hierarchy:
-`leagues -> series -> tournaments -> matches -> games`. Teams and their scores are
-stored in `teams`, `match_teams`, and `game_teams`. In Counter-Strike, individual
-`games` represent maps within a match. The legacy `csgo_live_matches` table is no longer
-used.
+Os dados das competições são armazenados de forma relacional, seguindo a hierarquia
+da PandaScore: `leagues -> series -> tournaments -> matches -> games`. As equipes e
+seus placares ficam nas tabelas `teams`, `match_teams` e `game_teams`. No Counter-Strike,
+cada registro em `games` representa um mapa da partida. A tabela antiga
+`csgo_live_matches` não é mais usada.
 
-## Configuration
+## Configuração
 
-Create a `.env` file in the project root:
+Crie um arquivo `.env` na raiz do projeto:
 
 ```env
-PANDASCORE_TOKEN=your_pandascore_token
+PANDASCORE_TOKEN=seu_token_pandascore
 PORT=3000
 ```
 
-Keep `.env` private; it is excluded by `.gitignore`.
+Mantenha o `.env` privado; ele está excluído pelo `.gitignore`.
 
-## Run
+## Execução
 
 ```bash
 npm run dev
 ```
 
-The server hydrates the live-score cache from SQLite, then synchronizes:
+O servidor carrega o cache de placares do SQLite e, em seguida, sincroniza:
 
-- Running matches every 30 seconds.
-- Upcoming matches every 5 minutes.
-- Past matches from the last 30 days every hour.
-- Leagues, series, and upcoming tournaments every 24 hours.
+- Partidas em andamento a cada 30 segundos.
+- Próximas partidas a cada 5 minutos.
+- Partidas passadas dos últimos 30 dias a cada hora.
+- Ligas, séries e próximos torneios a cada 24 horas.
 
-The SQLite database is stored under the ignored `data/` directory. Synchronization
-failures are logged and do not replace the last successful data.
+O banco SQLite fica no diretório `data/`, que é ignorado pelo Git. Falhas de
+sincronização são registradas e não substituem os dados da última sincronização
+bem-sucedida.
 
-## Endpoint
+## Rota de placares ao vivo
 
 ```text
 GET /api/csgo/live-scores
 ```
 
-The response contains the running matches, each team's current score, the last successful refresh time, and an `isStale` flag. This endpoint reads from the local cache and does not call PandaScore.
+A resposta contém as partidas em andamento, o placar atual de cada equipe, o horário
+da última atualização bem-sucedida e a propriedade `isStale`, que indica se os dados
+estão desatualizados. Essa rota lê o cache local e não consulta a PandaScore.
 
-The scheduler requests up to 100 matches per page. One page of running matches every
-30 seconds is approximately 120 PandaScore calls per hour. Upcoming/past pages and
-catalog pagination add calls, so monitor the request logs and leave room for retries
-within the Free plan's hourly quota.
+O agendador solicita até 100 partidas por página. Uma página de partidas em andamento
+a cada 30 segundos equivale a aproximadamente 120 chamadas à PandaScore por hora.
+As páginas de próximas e partidas passadas, além da paginação dos catálogos, aumentam
+esse total. Monitore os logs de requisições e mantenha margem para novas tentativas
+dentro do limite por hora do plano Free.
 
-## Local catalog routes
+## Rotas locais dos catálogos
 
-All routes below read only from SQLite. They never call restricted match-detail or
-game endpoints at PandaScore; a detail or game is available only if it was included
-in a response already synchronized from an endpoint available on the Free plan.
+Todas as rotas abaixo consultam somente o SQLite. Elas não acessam os endpoints
+restritos de detalhes de partidas ou de jogos da PandaScore. Um detalhe ou jogo só
+estará disponível se tiver vindo em uma resposta já sincronizada de um endpoint
+disponível no plano Free.
 
-| Route | Description |
+| Rota | Descrição |
 | --- | --- |
-| `GET /api/csgo/leagues[?page=1&per_page=50&search=...]` | List synchronized leagues |
-| `GET /api/csgo/leagues/:id` | Read a league |
-| `GET /api/csgo/leagues/:id/series` | List a league's series |
-| `GET /api/csgo/leagues/:id/matches` | List matches linked to a league |
-| `GET /api/csgo/series[?page=1&per_page=50&search=...]` | List synchronized series |
-| `GET /api/csgo/series/:id` | Read a series |
-| `GET /api/csgo/series/:id/tournaments` | List a series' tournaments |
-| `GET /api/csgo/series/:id/matches` | List matches linked to a series |
-| `GET /api/csgo/tournaments` | List synchronized tournaments |
-| `GET /api/csgo/tournaments/upcoming` | List upcoming tournaments |
-| `GET /api/csgo/tournaments/:id` | Read a tournament |
-| `GET /api/csgo/tournaments/:id/matches` | List matches linked to a tournament |
-| `GET /api/csgo/matches?state=upcoming\|running\|past` | List matches, optionally by state |
-| `GET /api/csgo/matches/upcoming\|running\|past` | List matches by state |
-| `GET /api/csgo/matches/:id` | Read a locally synchronized match |
-| `GET /api/csgo/matches/:id/games` | List games/maps included in the match data |
-| `GET /api/csgo/games/:id` | Read a locally synchronized game/map |
-| `GET /api/csgo/live-scores` | Read cached running scores |
+| `GET /api/csgo/leagues[?page=1&per_page=50&search=...]` | Lista as ligas sincronizadas |
+| `GET /api/csgo/leagues/:id` | Consulta uma liga |
+| `GET /api/csgo/leagues/:id/series` | Lista as séries de uma liga |
+| `GET /api/csgo/leagues/:id/matches` | Lista partidas associadas a uma liga |
+| `GET /api/csgo/series[?page=1&per_page=50&search=...]` | Lista as séries sincronizadas |
+| `GET /api/csgo/series/:id` | Consulta uma série |
+| `GET /api/csgo/series/:id/tournaments` | Lista os torneios de uma série |
+| `GET /api/csgo/series/:id/matches` | Lista partidas associadas a uma série |
+| `GET /api/csgo/tournaments` | Lista os torneios sincronizados |
+| `GET /api/csgo/tournaments/upcoming` | Lista os próximos torneios |
+| `GET /api/csgo/tournaments/:id` | Consulta um torneio |
+| `GET /api/csgo/tournaments/:id/matches` | Lista partidas associadas a um torneio |
+| `GET /api/csgo/matches?state=upcoming\|running\|past` | Lista partidas, opcionalmente por estado |
+| `GET /api/csgo/matches/upcoming\|running\|past` | Lista partidas por estado |
+| `GET /api/csgo/matches/:id` | Consulta uma partida sincronizada localmente |
+| `GET /api/csgo/matches/:id/games` | Lista os jogos/mapas incluídos nos dados da partida |
+| `GET /api/csgo/games/:id` | Consulta um jogo/mapa sincronizado localmente |
+| `GET /api/csgo/live-scores` | Consulta os placares em andamento armazenados no cache |
 
-Collection routes support `page` (or `page[number]`) and `per_page` (or
-`page[size]`), with a maximum page size of 100. League, series, and tournament lists
-also support `search` by name or slug. Responses include `data` and `pagination`
-for lists. Past matches are restricted to the last 30 days.
+As rotas de coleção aceitam `page` (ou `page[number]`) e `per_page` (ou
+`page[size]`), com no máximo 100 itens por página. As listas de ligas, séries e
+torneios também aceitam o parâmetro `search`, que pesquisa por nome ou slug. As
+respostas das listas incluem `data` e `pagination`. As partidas passadas ficam
+limitadas aos últimos 30 dias.
 
-## Error records
+## Registros de erros
 
-PandaScore HTTP, network, timeout, and invalid-response errors are stored in the `api_error_logs` SQLite table. Records include the endpoint, page, category, HTTP status, safe error code, and sanitized message. Tokens, request headers, and raw response bodies are not stored. Logs older than 30 days are removed at startup and when a new error is recorded. If SQLite cannot save an error, the failure is reported in the server log and the original sync error is preserved.
+Erros HTTP, de rede, timeout e respostas inválidas da PandaScore são armazenados na
+tabela SQLite `api_error_logs`. Os registros incluem endpoint, página, categoria,
+status HTTP, código de erro seguro e mensagem sanitizada. Tokens, cabeçalhos de
+requisição e corpos de resposta não são armazenados. Os registros com mais de 30 dias
+são removidos na inicialização e quando um novo erro é registrado. Se o SQLite não
+conseguir salvar um erro, a falha é informada no log do servidor e o erro original da
+sincronização é preservado.
 
-## Request records
+## Registros de requisições
 
-Every request sent through the shared PandaScore Axios client is recorded in the
-`api_request_logs` SQLite table, including successful responses and failures. Records
-contain timestamps, method, endpoint, page, HTTP status, duration, outcome, and a safe
-error code. Credentials, headers, and request/response bodies are not stored. Records
-older than 30 days are removed at startup and during request logging.
+Todas as requisições enviadas pelo cliente Axios compartilhado da PandaScore são
+registradas na tabela SQLite `api_request_logs`, incluindo as que tiveram sucesso e
+as que falharam. Os registros contêm horários, método, endpoint, página, status HTTP,
+duração, resultado e um código de erro seguro. Credenciais, cabeçalhos e corpos de
+requisição ou resposta não são armazenados. Os registros com mais de 30 dias são
+removidos na inicialização e durante o registro das requisições.
 
-## Tests
+## Testes
 
-The default test run uses only local fixtures and mocks; it does not call PandaScore.
+Por padrão, os testes usam dados locais e mocks; não fazem chamadas à PandaScore.
 
 ```bash
 npm test
 ```
 
-To also run a real API integration test, set `PANDASCORE_USE_REAL_API=true` in `.env`
-and run `npm test` again. The test requires `PANDASCORE_TOKEN` and makes one authenticated,
-read-only request for at most one running Counter-Strike match. This consumes one API call.
-Remove the toggle or set it to `false` to disable the real API test.
+Para executar também um teste de integração com a API real, defina
+`PANDASCORE_USE_REAL_API=true` no `.env` e execute `npm test` novamente. O teste
+precisa de `PANDASCORE_TOKEN` e faz uma única requisição autenticada e somente de
+leitura, solicitando no máximo uma partida de Counter-Strike em andamento. Essa
+requisição consome uma chamada da API. Remova a opção ou defina-a como `false` para
+desativar o teste real.
