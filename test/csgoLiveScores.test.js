@@ -14,13 +14,13 @@ import test from "node:test";
 import { AxiosError } from "axios";
 import app from "../src/app.js";
 import { createDatabase } from "../src/backend/db/database.js";
-import { getCsgoScoreCache } from "../src/backend/services/csgoScoreCache.js";
-import { mapCsgoMatch } from "../src/backend/services/csgoScoreMapper.js";
+import { getCsgoScoreCache } from "../src/backend/services/csgo/csgoScoreCache.js";
+import { mapCsgoMatch } from "../src/backend/services/csgo/csgoScoreMapper.js";
 import {
   purgeOldPandaScoreErrorLogs,
   recordPandaScoreError,
 } from "../src/backend/integrations/pandascore/errorLog.js";
-import { syncCsgoLiveScores } from "../src/backend/services/csgoLiveScores/csgoLiveScoreSync.js";
+import { syncCsgoLiveScores } from "../src/backend/services/csgo/csgoLiveScores/csgoLiveScoreSync.js";
 
 // Representa uma partida ao vivo com placares conhecidos para os testes.
 const sampleMatch = {

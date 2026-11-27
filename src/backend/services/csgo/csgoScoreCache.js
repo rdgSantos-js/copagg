@@ -8,7 +8,7 @@
 
 
 
-import { getDatabase } from "../db/database.js";
+import { getDatabase } from "../../db/database.js";
 
 // Armazena o snapshot compartilhado de placares para as rotas locais.
 let cache = {

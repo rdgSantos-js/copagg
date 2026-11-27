@@ -6,7 +6,7 @@
 
 
 import { Router } from "express";
-import { getDatabase } from "../db/database.js";
+import { getDatabase } from "../../db/database.js";
 import {
   getCsgoEntity,
   getCsgoGame,
@@ -16,7 +16,7 @@ import {
   listCsgoMatches,
   parseLocalDateOptions,
   parseLocalPagination,
-} from "../services/csgoCatalogQueries.js";
+} from "../../services/csgo/csgoCatalogQueries.js";
 
 const MATCH_STATES = ["upcoming", "running", "past"];
 

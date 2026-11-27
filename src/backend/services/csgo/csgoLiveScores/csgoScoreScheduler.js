@@ -5,8 +5,8 @@
 
 
 
-import { pandascore } from "../../integrations/pandascore/client.js";
-import { getDatabase } from "../../db/database.js";
+import { pandascore } from "../../../integrations/pandascore/client.js";
+import { getDatabase } from "../../../db/database.js";
 import { syncCsgoCatalog } from "../csgoCatalogSync.js";
 import { syncCsgoMatches } from "./csgoLiveScoreSync.js";
 

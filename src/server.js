@@ -11,10 +11,10 @@
 import "dotenv/config";
 import app from "./app.js";
 import { getDatabase } from "./backend/db/database.js";
-import { hydrateCsgoScoreCache } from "./backend/services/csgoScoreCache.js";
+import { hydrateCsgoScoreCache } from "./backend/services/csgo/csgoScoreCache.js";
 import { purgeOldPandaScoreErrorLogs } from "./backend/integrations/pandascore/errorLog.js";
 import { purgeOldPandaScoreRequestLogs } from "./backend/integrations/pandascore/requestLog.js";
-import { startCsgoScoreScheduler } from "./backend/services/csgoLiveScores/csgoScoreScheduler.js";
+import { startCsgoScoreScheduler } from "./backend/services/csgo/csgoLiveScores/csgoScoreScheduler.js";
 
 // Lê e valida a porta HTTP configurada para o servidor.
 const port = Number(process.env.PORT || 3000);

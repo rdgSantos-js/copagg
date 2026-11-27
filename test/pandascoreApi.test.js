@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import "dotenv/config";
 import test from "node:test";
 import { PANDASCORE_ENDPOINTS } from "../src/backend/integrations/pandascore/endpoints.js";
-import { mapCsgoMatch } from "../src/backend/services/csgoScoreMapper.js";
+import { mapCsgoMatch } from "../src/backend/services/csgo/csgoScoreMapper.js";
 
 const useRealApi = process.env.PANDASCORE_USE_REAL_API === "true";
 

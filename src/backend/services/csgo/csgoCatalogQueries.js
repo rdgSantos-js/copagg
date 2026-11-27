@@ -5,7 +5,7 @@
 
 
 
-import { getDatabase } from "../db/database.js";
+import { getDatabase } from "../../db/database.js";
 
 const ENTITY_QUERIES = {
   leagues: {

@@ -5,15 +5,15 @@
 
 
 
-import { getDatabase } from "../db/database.js";
+import { getDatabase } from "../../db/database.js";
 import {
   mapCsgoLeague,
   mapCsgoSeries,
   mapCsgoTournament,
   mapPandaScoreVideogame,
 } from "./csgoScoreMapper.js";
-import { recordPandaScoreError } from "../integrations/pandascore/errorLog.js";
-import { PANDASCORE_ENDPOINTS } from "../integrations/pandascore/endpoints.js";
+import { recordPandaScoreError } from "../../integrations/pandascore/errorLog.js";
+import { PANDASCORE_ENDPOINTS } from "../../integrations/pandascore/endpoints.js";
 
 const PAGE_SIZE = 100;
 const CATALOGS = [

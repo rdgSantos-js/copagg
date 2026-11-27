@@ -9,8 +9,8 @@
 
 
 import { Router } from "express";
-import { getCsgoScoreCache } from "../services/csgoScoreCache.js";
-import { parseLocalDateOptions } from "../services/csgoCatalogQueries.js";
+import { getCsgoScoreCache } from "../../services/csgo/csgoScoreCache.js";
+import { parseLocalDateOptions } from "../../services/csgo/csgoCatalogQueries.js";
 
 const router = Router();
 const STALE_AFTER_MS = 90_000;
