@@ -2,12 +2,16 @@ import { useEffect, useState } from "react";
 import BrandMark from "./components/BrandMark.jsx";
 import Icon from "./components/Icon.jsx";
 import HorizontalMatchList from "./components/HorizontalMatchList.jsx";
+import HeaderCard from "./components/HeaderCard.jsx";
 import MatchCard from "./components/MatchCard.jsx";
 import MatchColumn from "./components/MatchColumn.jsx";
 import SectionHeading from "./components/SectionHeading.jsx";
 import ThemeToggle from "./components/ThemeToggle.jsx";
 import {
   columnMatches,
+  featuredPlayer,
+  featuredTeam,
+  featuredTournament,
   matchFilters,
   matches,
   navigation,
@@ -256,6 +260,19 @@ function App() {
               description="Status, times, placar e contexto em cada linha da lista."
             />
             <HorizontalMatchList matches={columnMatches} />
+          </section>
+
+          <section className="content-section">
+            <SectionHeading
+              eyebrow="06 — CABEÇALHO"
+              title="Cabeçalho para times, campeonatos e jogadores"
+              description="Identidade, apresentação, infos e redes sociais em um só componente."
+            />
+            <div className="header-card-list">
+              <HeaderCard {...featuredTeam} />
+              <HeaderCard {...featuredTournament} />
+              <HeaderCard {...featuredPlayer} />
+            </div>
           </section>
 
           <footer className="page-footer">

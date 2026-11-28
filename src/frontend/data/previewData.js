@@ -125,3 +125,42 @@ export const palette = [
 ];
 
 export const matchFilters = ["Todas", "Ao vivo", "Próximas"];
+
+export const featuredTeam = {
+  name: "FURIA",
+  eyebrow: "FUR",
+  subtitle: "Counter-Strike 2",
+  imageFallback: "FUR",
+  countryName: "Brasil",
+  countryCode: "BR",
+  socialLinks: [
+    { platform: "instagram", label: "Instagram", url: "https://www.instagram.com/furia/" },
+    { platform: "x", label: "X", url: "https://x.com/FURIA" },
+    { platform: "youtube", label: "YouTube", url: "https://www.youtube.com/@FURIA" },
+    { platform: "twitch", label: "Twitch", url: "https://www.twitch.tv/furiatv" },
+  ],
+};
+
+export const featuredTournament = {
+  name: "IEM Katowice 2026",
+  subtitle: "Counter-Strike 2",
+  date: "8 Jan 2026 - 10 Jan 2026",
+  prizePool: "US$ 1.000.000",
+  status: "AO VIVO",
+  statusType: "live",
+  imageFallback: "IEM",
+  countryCode: "PO",
+  countryName: "Katowice, Polônia",
+};
+
+export const featuredPlayer = {
+  name: "KSCERATO",
+  eyebrow: "FURIA",
+  subtitle: "Kaike Cerato",
+  imageFallback: "K",
+  countryName: "Brasil",
+  countryCode: "BR",
+  socialLinks: [
+    { platform: "instagram", label: "Instagram", url: "https://www.instagram.com/kscerato/" },
+  ]
+};
