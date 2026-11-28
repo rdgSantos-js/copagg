@@ -3,11 +3,16 @@ import BrandMark from "./components/BrandMark.jsx";
 import Icon from "./components/Icon.jsx";
 import HorizontalMatchList from "./components/HorizontalMatchList.jsx";
 import HeaderCard from "./components/HeaderCard.jsx";
+import Bracket from "./components/Bracket.jsx";
 import MatchCard from "./components/MatchCard.jsx";
 import MatchColumn from "./components/MatchColumn.jsx";
 import SectionHeading from "./components/SectionHeading.jsx";
+import Standings from "./components/Standings.jsx";
+import SwissStage from "./components/SwissStage.jsx";
+import TeamRoster from "./components/TeamRoster.jsx";
 import ThemeToggle from "./components/ThemeToggle.jsx";
 import {
+  bracketPreview,
   columnMatches,
   featuredPlayer,
   featuredTeam,
@@ -16,6 +21,9 @@ import {
   matches,
   navigation,
   palette,
+  standingsPreview,
+  swissStagePreview,
+  teamRosterPreview,
 } from "./data/previewData.js";
 
 function readThemeMode() {
@@ -53,42 +61,23 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <BrandMark />
-        <div className="sidebar-label">MENU PRINCIPAL</div>
-        <nav className="main-nav" aria-label="Navegação principal">
-          {navigation.map((item, index) => (
-            <a
-              className={`nav-link ${index === 0 ? "nav-link-active" : ""}`}
-              href="#"
-              key={item}
-              aria-current={index === 0 ? "page" : undefined}
-            >
-              <span className={`nav-indicator nav-indicator-${index}`} />
-              {item}
-            </a>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <span className="sidebar-label">SEU ESPORTE</span>
-          <div className="game-selector">
-            <span className="game-icon">CS</span>
-            <span>Counter-Strike 2</span>
-            <span className="game-caret">⌄</span>
-          </div>
-          <div className="sidebar-note">
-            <span className="online-indicator" />
-            <span>Design system preview</span>
-          </div>
-        </div>
-      </aside>
-
       <main className="main-content">
         <header className="topbar">
-          <div className="breadcrumb">
-            <span>Componentes</span>
-            <span className="breadcrumb-divider">/</span>
-            <strong>Visão geral</strong>
+          <div className="topbar-start">
+            <BrandMark />
+            <nav className="main-nav" aria-label="Navegação principal">
+              {navigation.map((item, index) => (
+                <a
+                  className={`nav-link ${index === 0 ? "nav-link-active" : ""}`}
+                  href="#"
+                  key={item}
+                  aria-current={index === 0 ? "page" : undefined}
+                >
+                  <span className={`nav-indicator nav-indicator-${index}`} />
+                  {item}
+                </a>
+              ))}
+            </nav>
           </div>
           <div className="topbar-actions">
             <span className="preview-label">PREVIEW</span>
@@ -98,7 +87,6 @@ function App() {
             </div>
           </div>
         </header>
-
         <div className="page-content">
           <section className="welcome-panel">
             <div className="welcome-copy">
@@ -244,18 +232,42 @@ function App() {
             </div>
           </section>
 
-          <section className="content-section">
-            <SectionHeading
-              eyebrow="04 — COLUNA"
-              title="Jogos empilhados"
-              description="Oito partidas demonstrativas em uma única coluna."
-            />
-            <MatchColumn matches={columnMatches} />
+          <section className="content-section two-column-section">
+            <div className="two-column-item">
+              <SectionHeading
+                eyebrow="04 — COLUNA"
+                title="Jogos empilhados"
+                description="Oito partidas demonstrativas em uma única coluna."
+              />
+              <MatchColumn matches={columnMatches} />
+            </div>
+
+            <div className="two-column-item">
+              <SectionHeading
+                eyebrow="05 — CABEÇALHO"
+                title="Cabeçalho para times, campeonatos e jogadores"
+                description="Identidade, apresentação, infos e redes sociais em um só componente."
+              />
+              <div className="header-card-list">
+                <HeaderCard {...featuredTeam} />
+                <HeaderCard {...featuredTournament} />
+                <HeaderCard {...featuredPlayer} />
+              </div>
+            </div>
           </section>
 
           <section className="content-section">
             <SectionHeading
-              eyebrow="05 — LISTA HORIZONTAL"
+              eyebrow="06 — ELENCO"
+              title="Time: jogadores e staff"
+              description="Exemplo ilustrativo de jogadores e staff da FURIA de Counter-Strike 2."
+            />
+            <TeamRoster {...teamRosterPreview} />
+          </section>
+
+          <section className="content-section">
+            <SectionHeading
+              eyebrow="07 — LISTA HORIZONTAL"
               title="Placar em linha"
               description="Status, times, placar e contexto em cada linha da lista."
             />
@@ -264,14 +276,30 @@ function App() {
 
           <section className="content-section">
             <SectionHeading
-              eyebrow="06 — CABEÇALHO"
-              title="Cabeçalho para times, campeonatos e jogadores"
-              description="Identidade, apresentação, infos e redes sociais em um só componente."
+              eyebrow="08 — MATA-MATA"
+              title="Chaveamento Upper e Lower"
+              description="Fases eliminatórias com upper bracket, lower bracket e grande final."
             />
-            <div className="header-card-list">
-              <HeaderCard {...featuredTeam} />
-              <HeaderCard {...featuredTournament} />
-              <HeaderCard {...featuredPlayer} />
+            <Bracket {...bracketPreview} />
+          </section>
+
+          <section className="content-section">
+            <SectionHeading
+              eyebrow="09 — FASE SUÍÇA"
+              title="Rodadas e classificação"
+              description="Confrontos por rodada e campanha de cada equipe."
+            />
+            <SwissStage {...swissStagePreview} />
+          </section>
+
+          <section className="content-section">
+            <SectionHeading
+              eyebrow="10 — CLASSIFICAÇÃO"
+              title="Classificação de equipes"
+              description="Jogos disputados, vitórias, derrotas e demais dados."
+            />
+            <div className="standings-preview" role="region" aria-label="Classificação de equipes" tabIndex={0}>
+              <Standings {...standingsPreview} />
             </div>
           </section>
 

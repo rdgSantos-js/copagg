@@ -26,6 +26,32 @@ PORT=3000
 
 Mantenha o `.env` privado; ele está excluído pelo `.gitignore`.
 
+## Classificação no frontend
+
+O componente `Standings` recebe um objeto com `standings` e, opcionalmente,
+`columns`. A equipe é sempre a primeira coluna; as demais aparecem na ordem
+definida em `columns`. Cada coluna usa uma `key` única para ler o campo
+correspondente da linha, `label` para o cabeçalho, `title` opcional para
+descrever a abreviação e `bold: true` opcional para destacar os valores:
+
+```jsx
+const classificacao = {
+  columns: [
+    { key: "played", label: "J", title: "Jogos disputados" },
+    { key: "wins", label: "V", title: "Vitórias", bold: true },
+  ],
+  standings: [
+    { team: { id: "fur", name: "FURIA", abbreviation: "FUR" }, played: 2, wins: 2 },
+  ],
+};
+
+<Standings {...classificacao} />
+```
+
+Os valores das colunas devem ser números ou textos; valores ausentes ou nulos
+aparecem como `—`. Sem `columns`, a tabela mantém as colunas V e D. O exemplo
+da interface usa dados locais e não consulta a API.
+
 ## Execução
 
 ```bash

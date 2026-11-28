@@ -1,14 +1,5 @@
 import { useId } from "react";
-
-function getCountryFlag(countryCode) {
-  if (typeof countryCode !== "string" || !/^[a-z]{2}$/i.test(countryCode)) {
-    return "";
-  }
-
-  return String.fromCodePoint(
-    ...countryCode.toUpperCase().split("").map((letter) => 127397 + letter.charCodeAt(0)),
-  );
-}
+import CountryFlag from "./CountryFlag.jsx";
 
 function HeaderCard({
   name,
@@ -25,7 +16,6 @@ function HeaderCard({
   socialLinks = [],
 }) {
   const headingId = useId();
-  const countryFlag = getCountryFlag(countryCode);
 
   return (
     <section className={`header-card${status ? " header-card-with-status" : ""}`} aria-labelledby={headingId}>
@@ -44,8 +34,8 @@ function HeaderCard({
           <h3 id={headingId}>{name}</h3>
           {countryName && (
             <span className="header-card-country">
-              {countryFlag && <span aria-hidden="true">{countryFlag}</span>}
               {countryName}
+              <CountryFlag countryCode={countryCode} countryName="" />
             </span>
           )}
         </div>
